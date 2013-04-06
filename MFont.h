@@ -62,7 +62,7 @@ void DrawStrings(void)										// Changes to ortho, writes fps, back to perspec
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	glViewport(0, 0, WINWidth, WINHeight);                    //-+-+-+_+_+_+_+_+_+_+_+_
+	glViewport(0, 0, resizeWINWidth, resizeWINHeight);                    //-+-+-+_+_+_+_+_+_+_+_+_
 	glOrtho(-100.0, 100.0, -100.0, 100.0, -100.0, 100.0);     // CHANGE TO 2D
 
 	glMatrixMode(GL_MODELVIEW);
@@ -73,7 +73,7 @@ void DrawStrings(void)										// Changes to ortho, writes fps, back to perspec
 	glMatrixMode(GL_PROJECTION);                             /*-+-+-+_+_+_+_+_+_+_+_+_*/
 	glLoadIdentity();									     /* CHANGE BACK TO 3D   */
 
-	glViewport(0, 0, WINWidth, WINHeight);
+	glViewport(0, 0, resizeWINWidth, resizeWINHeight);
 	gluPerspective(45,(float)WINWidth/WINHeight,1,VIEW_DISTANCE);
 	glMatrixMode(GL_MODELVIEW);
    // glLoadIdentity();
