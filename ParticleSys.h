@@ -68,7 +68,7 @@ enum PRD_TYPE
 	BOTTOMLESS_CUBE
 };
 
-void PRDTorus(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
+void PRDTorus(Vert3xf *pos, Vert3xf *forwardVec, Bounds *particleBounds)
 {
 	glPushMatrix();
 		glTranslatef(pos->x, pos->y, pos->z);
@@ -77,9 +77,45 @@ void PRDTorus(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
 	glPopMatrix();
 }
 
-void PRDBottomlessCube(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
+void PRDBottomlessCube(Vert3xf *pos, Vert3xf *forwardVec, Bounds *particleBounds)
 {
-	// Front face.
+	if(pos->x > 0.3*particleBounds->maxX || pos->x < 0.3*particleBounds->minX)
+	{
+		forwardVec->x += float(rand()%4)/100;
+	}
+	if(pos->y > 0.5*particleBounds->maxY || pos->y < 0.5*particleBounds->minY)
+	{
+		forwardVec->y += float(rand()%4)/100;
+	}
+	if(pos->z > 0.7*particleBounds->maxZ || pos->z < 0.7*particleBounds->minZ)
+	{
+		forwardVec->z += float(rand()%4)/100;
+	}
+/*
+	if(pos->x < 0.1*particleBounds->maxX || pos->x > 0.1*particleBounds->minX)
+	{
+		forwardVec->x = 0;
+	}
+	if(pos->y < 0.1*particleBounds->maxY || pos->y > 0.1*particleBounds->minY)
+	{
+		forwardVec->y = 0;
+	}
+	if(pos->z < 0.1*particleBounds->maxZ || pos->z > 0.1*particleBounds->minZ)
+	{
+		forwardVec->z = 0;
+	}
+	*/
+
+	if(forwardVec->x > 1)
+		forwardVec->x = 0;
+	if(forwardVec->y > 1)
+		forwardVec->y = 0;
+	if(forwardVec->z > 1)
+		forwardVec->z = 0;
+
+	// Front face:
+	glColor3f(1.0,1.0,1.0);
+	glColor3f(forwardVec->x,forwardVec->y,forwardVec->z);
 	glBegin(GL_QUADS);
 		glVertex3f( pos->x, pos->y, pos->z);							// Bottom left
 		glVertex3f( pos->x + 10, pos->y, pos->z);						// Bottom right
@@ -87,6 +123,8 @@ void PRDBottomlessCube(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
 		glVertex3f( pos->x, pos->y + 10, pos->z);						// Top left
 	glEnd();
 	// Right face.
+	glColor3f(1.0,1.0,1.0);
+	glColor3f(forwardVec->x+float((rand()%4)/10),forwardVec->y+float((rand()%4)/10),forwardVec->z+float((rand()%4)/10));
 	glBegin(GL_QUADS);
 		glVertex3f( pos->x + 10, pos->y, pos->z);						// Bottom left
 		glVertex3f( pos->x + 10, pos->y, pos->z - 10);					// Bottom right
@@ -94,6 +132,8 @@ void PRDBottomlessCube(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
 		glVertex3f( pos->x + 10, pos->y + 10, pos->z);					// Top left
 	glEnd();
 	// Back face.
+	glColor3f(1.0,1.0,1.0);
+	glColor3f(forwardVec->x+float((rand()%4)/10),forwardVec->y+float((rand()%4)/10),forwardVec->z+float((rand()%4)/10));
 	glBegin(GL_QUADS);
 		glVertex3f( pos->x , pos->y, pos->z);							// Bottom left
 		glVertex3f( pos->x + 10, pos->y, pos->z);						// Bottom right
@@ -101,6 +141,8 @@ void PRDBottomlessCube(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
 		glVertex3f( pos->x, pos->y, pos->z - 10);						// Top left
 	glEnd();
 	// Left face.
+	glColor3f(1.0,1.0,1.0);
+	glColor3f(forwardVec->x+float((rand()%4)/10),forwardVec->y+float((rand()%4)/10),forwardVec->z+float((rand()%4)/10));
 	glBegin(GL_QUADS);
 		glVertex3f( pos->x, pos->y, pos->z - 10);						// Bottom left
 		glVertex3f( pos->x, pos->y, pos->z);							// Bottom right
@@ -108,6 +150,8 @@ void PRDBottomlessCube(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
 		glVertex3f( pos->x, pos->y + 10, pos->z - 10);					// Top left
 	glEnd();
 	// Top face.
+	glColor3f(1.0,1.0,1.0);
+	glColor3f(forwardVec->x+float((rand()%4)/10),forwardVec->y,forwardVec->z+float((rand()%4)/10));
 	glBegin(GL_QUADS);
 		glVertex3f( pos->x, pos->y + 10, pos->z);						// Bottom left
 		glVertex3f( pos->x + 10, pos->y + 10, pos->z);					// Bottom right
@@ -116,7 +160,7 @@ void PRDBottomlessCube(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
 	glEnd();
 }
 
-void PRDSquare(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
+void PRDSquare(Vert3xf *pos, Vert3xf *forwardVec, Bounds *particleBounds)
 {
     glBegin(GL_QUADS);
         glVertex3f( pos->x, pos->y, pos->z);
@@ -126,7 +170,7 @@ void PRDSquare(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
     glEnd();
 }
 
-void PRDTriangle(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
+void PRDTriangle(Vert3xf *pos, Vert3xf *forwardVec, Bounds *particleBounds)
 {
     glBegin(GL_QUADS);
         glVertex3f( pos->x, pos->y, pos->z);
@@ -138,13 +182,13 @@ void PRDTriangle(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds)
 class CParticle
 {
 public:
-	Vert3xf pos;
+	Vert3xf pos, colour;
 	Vec3d forwardVec;		// max displacement in each of the coords
 	Bounds particleBounds;	// max and min pos
 	bool isAlive;
 
 	CParticle(Vert3xf particleOrigin, Bounds particlePosLimits, Vec3d forwardDir);
-	void (*PRDfuncPtr)(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds);// func ptr def to a func which draws the particle
+	void (*PRDfuncPtr)(Vert3xf *pos, Vert3xf *forwardVec, Bounds *particleBounds);// func ptr def to a func which draws the particle
 	void (*PMRfuncPtr)(Vert3xf *pos, Vec3d *forwardVec, Bounds *particleBounds);// func ptr to func which manip pos/forward vec
 	void setPRDfunc(PRD_TYPE selection);
 	void setPMRfunc(PMR_TYPE selection);
@@ -399,7 +443,7 @@ void CParticleSys::renderParticles(void)
 		for(particleNode *tempParticleNode = tempParticleHead; tempParticleNode != NULL; tempParticleNode = tempParticleHead)
 		{
 			tempParticleHead = tempParticleNode->nextParticleNode;
-			tempParticleNode->particle->PRDfuncPtr(&tempParticleNode->particle->pos, &tempParticleNode->particle->forwardVec, &tempParticleNode->particle->particleBounds);
+			tempParticleNode->particle->PRDfuncPtr(&tempParticleNode->particle->pos, &tempParticleNode->particle->colour, &tempParticleNode->particle->particleBounds);
 		}
 	}
 }
