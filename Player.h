@@ -25,6 +25,7 @@ class CPlayer
 {
 public:
 	Vert3xf playerPos;
+	int facingDir[2];
 	int health;
 
 	CPlayer(float xPos, float yPos);
@@ -34,6 +35,7 @@ public:
 	void translatePlayer(int x, int z);
 	void requestMove(PLAYER_MOVE_REQUEST DIR);
 	void drawPlayer(void);
+	void rotateOrientation(void);
 };
 
 CPlayer::CPlayer(float xSpawnPos, float zSpawnPos)
@@ -41,6 +43,9 @@ CPlayer::CPlayer(float xSpawnPos, float zSpawnPos)
 	playerPos.x = xSpawnPos;
 	playerPos.z = zSpawnPos;
 	health = 100;
+
+	facingDir[0] = 0;	// x positive
+	facingDir[1] = 0;	// z positive
 }
 
 CPlayer::~CPlayer()
@@ -84,6 +89,23 @@ void CPlayer::drawPlayer(void)
 		glTranslatef(playerPos.x, 0, playerPos.z);
 		DrawCubeNoBottom();
 	glPopMatrix();
+}
+
+void CPlayer::rotateOrientation(void)		// rotate orientation clockwise every call
+{
+	static float degrees = 0;
+
+	facingDir[0] = sin(double(((degrees)*PI)/180));
+	facingDir[1] = cos(double(((degrees)*PI)/180));
+
+	degrees += 90;
+	//if(degrees > 360)
+	//	degrees = 0;
+
+	cout << INS << "Facing dir 0; " << facingDir[0] << ", " << "Facing dir 1; " << facingDir[1];
+	//cout << INS << "Facing dir 0; " << sin(double(((degrees)*PI)/180));
+//	cout << INS << "Facing dir 1; " << cos(double(((degrees)*PI)/180));
+
 }
 
 #endif /* PLAYER_H_ */
