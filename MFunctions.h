@@ -117,6 +117,18 @@ float Round(const float &number, const int num_digits)  //Got this from: http://
     return doComplete5i / powf(10.0f, (float) num_digits);
 }
 
+float highest01(float num)		// highest 0.1, so 0.29 -> 0.3
+{
+	float x10 = num*10.0;		// need 10.0 here or else float*int = int
+								// same with below, even tho float typecast; int()/int = int, but dont need cast when return int()/float = float
+
+	//x10 - int(x10); // 2 - 2, mayb have to typecast to flaot
+	if((x10 - int(x10)) >= 0.5)
+		return (int(x10)/10.0)+0.1;	// 0.2 + 0.1
+	else
+		return (int(x10)/10.0);
+}
+
 /*
 typedef struct
 {
@@ -701,7 +713,7 @@ void DrawCubeNoBottom(void)												// Draw cube without bottom face, perform
 
 void DrawCube(void)														// Draw cube
 {
-    glShadeModel(SHADE ? GL_FLAT : GL_SMOOTH); 							//	if true -> flat, false -> smooth
+    //glShadeModel(SHADE ? GL_FLAT : GL_SMOOTH); 							//	if true -> flat, false -> smooth
 
 	// Front face.
     glBegin(GL_QUADS);
