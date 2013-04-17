@@ -47,15 +47,87 @@
  * 	draw each selectable
  * 	ReadPixels to det selected
  *
+ * 	note;
+ * 		invalid color vals clamped; use 1.2, 0.1, 1.0, read in 1, not 1.2
+ *
+ *
+ * 		get some sort of rounding; use glColor3f to specify 0.3, 0.5, 0.9; read in 0.29, 0.50, 0.89; seems to always give highest round? so need to round up func to 1dec
+ * 								   use glColor3f to specify 0.2, 0.4, 0.8; read in 0.2, 0.4, 0.8 so...
+ * 								   use " " 0.25,0.66,0.88 read in: 0.25098 , 0.658824 , 0.878431 so 0.0X needs round correct
+ * 			-> mayb different on diff systems? platforms?, ??
+ *
+ * 		use 1dec place; 0.1 - 1.0 = 1000 selectables; probably enough
+ *
+ *		after swap back for front buffer; back copied to front
+ *			detect mouse click;
+ *				write to back buffer colour coded selectables, read from back buffer, det which one picked, clear buffer(colour buffer bit), draw normally
+ *
+ *		multiple CColourCodedSelectables class for diff selection bits, colours wont conflict bcs each class processes on a clean back buffer
+ *			get around the 1000 item limit? yes?
+ *			other uses?
+ *
  * 	adv;
  * 		since read pix of unique col, cant evver misclick, no additional depth comparison
  * 	disadv;
- * 		draw operations slow?
+ * 		draw operations slow? if inc copy/write rectangle; costs more
+ * 		will be able to select selectables that are normally behind non selectable items; this is bcs dont completely redraw entire scene, depth test pass
+ *
  */
 
 
 #ifndef SPACESELECTOR_H_
 #define SPACESELECTOR_H_
+
+void square500(void)
+{
+	glBegin(GL_QUADS);
+		glVertex3i( 0, 0, 1);											// Bottom left
+		glVertex3i( 500, 0, 1);											// Bottom right
+		glVertex3i( 500, 500, 1);											// Top right
+		glVertex3i( 0, 500, 1);											// Top left
+	glEnd();
+}
+
+void square700(void)
+{
+	glBegin(GL_QUADS);
+		glVertex3i( 700, 700, 0);											// Bottom left
+		glVertex3i( 1000, 700, 0);											// Bottom right
+		glVertex3i( 1000, 1000, 0);											// Top right
+		glVertex3i( 700, 1000, 0);											// Top left
+	glEnd();
+}
+
+void wireSphere(void)
+{
+  	glPushMatrix();
+		glTranslated(400, 0,  400);
+		glScalef(100, 100, 100);
+		glutWireSphere(1,10,10);										// 10: slices, 10: stacks
+	glPopMatrix();
+}
+
+void solidTorus(void)
+{
+    glPushMatrix();
+        glTranslated(500, 0, 0);
+		glScalef(100, 100, 100);
+		glutSolidTorus(0.2,0.8,10,10);
+    glPopMatrix();
+}
+
+void wireCone(void)
+{
+    glPushMatrix();
+        glTranslated(1000, 0, 0);
+		glScalef(100, 100, 100);
+		glutWireCone(1,1,10,10);
+    glPopMatrix();
+}
+
+
+
+
 
 enum SELECT_MOVE_DIR
 {
@@ -64,6 +136,222 @@ enum SELECT_MOVE_DIR
 	SELECTION_LEFT,
 	SELECTION_RIGHT
 };
+
+class CSelectableNode
+{
+public:
+	Vert3xf colour;
+	const char *name;
+	void (*drawingFunc)(void);		// Func ptr to drawing func of selectable; FUNC MUST; not have colour operations, completely transform vertices to world coords
+	CSelectableNode *nextSelectable;
+	CSelectableNode(void (*drawFunc)(void), const char *chId, float x, float y, float z);
+	~CSelectableNode();
+};
+
+CSelectableNode::CSelectableNode(void (*drawFunc)(void), const char *chId, float x, float y, float z)
+{
+	colour.x = x;
+	colour.y = y;
+	colour.z = z;
+
+	name = chId;
+	drawingFunc = drawFunc;
+	nextSelectable = NULL;
+}
+
+CSelectableNode::~CSelectableNode()
+{
+
+}
+
+// *********************************************************
+// **********Process Selection via colour coding selectables
+// *********************************************************
+/* What happens if delete selectable; need to recycle colour
+ * what happens if greater than 1000 selectables: 0.1 colour def
+ * selectable callback response?
+ *
+ */
+
+class CColourCodedSelection
+{
+public:
+	CSelectableNode *selectablesHead;
+	Vert3xf lastColour;
+	int componentToIncrement;									// either 0, 1, 2 corresponding to x, y, z in lastColour
+
+	CColourCodedSelection(void);
+	~CColourCodedSelection();
+
+	void deleteSelectablesList(void);
+	void deleteSelectableID(char id);
+	void addToRecycleList(void);								// Want a selectable to be removed from the selectable list, have the colour available so can reuse/not fill list
+	void callbackForSelectable(char id);
+	void drawColourCodedSelectables(void);
+	bool addToSelectablesList(void (*drawFunc)(void), const char *name);
+	void evaluateNextColour(void);
+	void detectSelection(Vert3xf *camPos, Vert3xf *viewPt);		// Upon mouse click
+
+};
+
+CColourCodedSelection::CColourCodedSelection(void)
+{
+	selectablesHead = NULL;
+
+	lastColour.x = 0.0;
+	lastColour.y = 0.0;
+	lastColour.z = 0.0;
+
+	componentToIncrement = 0;
+}
+
+CColourCodedSelection::~CColourCodedSelection(void)				// Run through, delete all nodes
+{
+	for(CSelectableNode *tempNode = selectablesHead; tempNode != NULL; selectablesHead = tempNode)
+	{
+		tempNode = tempNode->nextSelectable;
+		delete selectablesHead;
+	}
+
+	selectablesHead = NULL;
+}
+
+void CColourCodedSelection::deleteSelectablesList(void)			// Run through, delete all nodes
+{
+	for(CSelectableNode *tempNode = selectablesHead; tempNode != NULL; selectablesHead = tempNode)
+	{
+		tempNode = tempNode->nextSelectable;
+		delete selectablesHead;
+	}
+
+	// list empty
+	selectablesHead = NULL;
+	// start at lastColour.x
+	componentToIncrement = 0;
+	// All colours available again
+	lastColour.x = 0.0;
+	lastColour.y = 0.0;
+	lastColour.z = 0.0;
+}
+
+void CColourCodedSelection::drawColourCodedSelectables(void)	// Add node to list
+{
+	// if list is empty;
+	if(selectablesHead == NULL)
+		return;
+	else
+	{
+		CSelectableNode *tempNode = NULL;
+		// Run through, draw
+		for(tempNode = selectablesHead; tempNode != NULL;  tempNode = tempNode->nextSelectable)
+		{
+			glColor3f(0.0,0.0,0.0);		// ensures the following color command goes thru pure?
+			glColor3f(tempNode->colour.x, tempNode->colour.y, tempNode->colour.z);
+			tempNode->drawingFunc();
+		}
+	}
+}
+
+void CColourCodedSelection::evaluateNextColour(void)											// change lastColour to next available colour
+{
+	if(componentToIncrement > 2)
+		componentToIncrement = 0;
+	switch(componentToIncrement)
+	{
+	case 0:
+		lastColour.x += 0.1;
+		break;
+	case 1:
+		lastColour.y += 0.1;
+		break;
+	case 2:
+		lastColour.z += 0.1;
+		break;
+	}
+	componentToIncrement++;
+}
+
+bool CColourCodedSelection::addToSelectablesList(void (*drawFunc)(void), const char *name)		// Add node to list
+{
+	// if list is empty;
+	if(selectablesHead == NULL)
+	{
+		evaluateNextColour();
+		selectablesHead = new CSelectableNode(drawFunc, name,lastColour.x, lastColour.y, lastColour.z);
+	}
+	else
+	{
+		CSelectableNode *tempNode = NULL;
+
+		// Find the tail;
+		for(tempNode = selectablesHead; tempNode->nextSelectable != NULL;  tempNode = tempNode->nextSelectable);
+
+		// Get next colour available
+		evaluateNextColour();
+		if(tempNode->nextSelectable == NULL)
+			tempNode->nextSelectable = new CSelectableNode(drawFunc, name, lastColour.x, lastColour.y, lastColour.z);
+	}
+
+	// if list full = false, no more memory? -> false
+	return true;
+}
+
+void CColourCodedSelection::detectSelection(Vert3xf *camPos, Vert3xf *viewPt)
+{
+	// Draw Selectables; drawing to back buffer; user doesnt see any of this
+	// MUST BE IDENTICAL DRAWING SETUP AS IN MAIN LOOP; camera, transforms,
+	// must be perfect transforms as where they normally are:
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();													// This is so that previous transformations do not accum
+	gluPerspective(45,(float)WINWidth/WINHeight,1,VIEW_DISTANCE);
+	glMatrixMode(GL_MODELVIEW);
+
+	// BLank slate; pixel colour info, and depth component of pixels
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.
+																		//Also specifies what to clear.(COLOR BUFFER)
+																		// Have to clear buffer bit bcs dont want previous drawn items to be atop the following drawn items?
+	// CAMERA
+	gluLookAt(
+		camPos->x, camPos->y, camPos->z,
+		viewPt->x, viewPt->y, viewPt->z,
+		0.0f, 1.0f, 0.0f);
+
+	// Draw selectables
+	drawColourCodedSelectables();
+
+	// Read frame buffer
+	float pixelData[1][1][3];
+	// Specify source buffer to read from;
+	glReadBuffer(GL_BACK);
+	// Read pixel data
+	glReadPixels(mousePosX, (WINHeight-mousePosY), 1, 1, GL_RGB, GL_FLOAT, pixelData);		// lower left of buffer, size, format, type, array
+	cout << INS << highest01(pixelData[0][0][0]) << ", " << highest01(pixelData[0][0][1]) << ", " << highest01(pixelData[0][0][2]);
+
+	// Clear back buffer as to allow real scene to be drawn without the previous obstructing it
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// detect selected;
+	// if list is empty;
+	if(selectablesHead == NULL)
+	{
+		return;
+	}
+	else
+	{
+		// Find the colour which matches;
+		for(CSelectableNode *tempNode = selectablesHead; tempNode != NULL;  tempNode = tempNode->nextSelectable)
+		{
+			// colour will always be whole here, ie 0.1, 0.3, and pixel data is rounded to whole, so can be compared this way
+			if(tempNode->colour.x == highest01(pixelData[0][0][0]))
+				if(tempNode->colour.y == highest01(pixelData[0][0][1]))
+					if(tempNode->colour.z == highest01(pixelData[0][0][2]))
+					{
+						cout << INS << tempNode->name << ", selected.";
+						break;		// Found the correct selectable, so stop traversing the rest of the list
+					}
+		}
+	}
+}
 
 class CSelection
 {
@@ -85,7 +373,6 @@ public:
 	int processMouseSelScene(int mousePosX, int mousePosY);
 	int processMouseSelCubeArr(CSelectableBox *Headint, int length);		// run through items, return selected item#
 };
-
 CSelection::CSelection(void)
 {
 	selectionPos.x = 0;
@@ -97,11 +384,9 @@ CSelection::CSelection(void)
 	numHits = 0;
 	nameSelected = 0;
 }
-
 CSelection::~CSelection(void)
 {
 }
-
 void CSelection::moveSelection(SELECT_MOVE_DIR moveDir)
 {
 	switch(moveDir)
@@ -120,7 +405,6 @@ void CSelection::moveSelection(SELECT_MOVE_DIR moveDir)
 		break;
 	}
 }
-
 void CSelection::renderSelectionBox(void)
 {
     glBegin(GL_LINE_STRIP);
@@ -140,7 +424,6 @@ void CSelection::renderSelectionBox(void)
 	   	glVertex3f( selectionPos.x, 10, selectionPos.z);                        // Bottom left.
     glEnd();
 }
-
 void CSelection::startPicking(int mousePosX, int mousePosY)
 {
 	GLint viewport[4];
@@ -169,7 +452,6 @@ void CSelection::startPicking(int mousePosX, int mousePosY)
 	numHits = 0;
 	nameSelected = 0;
 }
-
 void CSelection::stopPicking(void)
 {
 	glMatrixMode(GL_PROJECTION);	// restore original projection matrix
@@ -178,7 +460,6 @@ void CSelection::stopPicking(void)
 	glFlush();
 	numHits = glRenderMode(GL_RENDER);	// get number of hits, return to normal rendering mode
 }
-
 void CSelection::getHitName(void)
 {
 	if(numHits == 0)
@@ -213,7 +494,6 @@ void CSelection::getHitName(void)
 	// reset numHits
 	numHits = 0;
 }
-
 int CSelection::processMouseSelScene(int mousePosX, int mousePosY)
 {
 	startPicking(mousePosX, mousePosY);
@@ -290,12 +570,10 @@ int CSelection::processMouseSelScene(int mousePosX, int mousePosY)
 
     getHitName();
 }
-
 int CSelection::processMouseSelCubeArr(CSelectableBox *Head, int length)
 {
 
 }
-
 void selection(void)
 {
 	GLuint selecBuf[1024], hitsCnt = 0;
@@ -426,22 +704,32 @@ void det( GLdouble *winVerts)
 		//cout << INS <<
 	}
 }
-
 void detectColour(void)		// read from frontbuf into float arr, draw float arr into backbuf at raster pos
 {							// flicker gets if draw directly to front buffer
-	static float pixelData[500][500][3];
+	static float pixelData[5][5][3];
 	// Specify source buffer to read from;
 	glReadBuffer(GL_FRONT);
 	// Read pixel data
-	glReadPixels(0, 0, 500, 500, GL_RGB, GL_FLOAT, pixelData);		// lower left of buffer, size, format, type, array
+	//		-2 bcs want mouse pointer point to be center of detection area
+	//		total area; 5x5
+	glReadPixels(mousePosX-2, (WINHeight-mousePosY)-2, 5, 5, GL_RGB, GL_FLOAT, pixelData);		// lower left of buffer, size, format, type, array
+	for(int x = 0; x < 5; x++)
+	{
+		for(int y = 0; y < 5; y++)
+		{
+			cout << INS;
+			for(int z = 0; z < 3; z++)
+				cout << " , " << pixelData[x][y][z] << "(" << highest01(pixelData[x][y][z]) << ")";
+		}
+	}
+
 	// Specify destination;
 	glDrawBuffer(GL_BACK);
 	// Specify valid insertion pt
-	glRasterPos3f(0,0,0);
+	glRasterPos3f(90,90,0);
 	// Wont draw if raster pos invalid
-	glDrawPixels(500, 500, GL_RGB, GL_FLOAT, pixelData);
+	glDrawPixels(5, 5, GL_RGB, GL_FLOAT, pixelData);		// width, height of pixel rect to draw. lower left or rect is at raster pos
 }
-
 void readFromFrontDrawToBack(void)		// read from frontbuf into float arr, draw float arr into backbuf at raster pos
 {										// flicker gets if draw directly to front buffer
 	static float pixelData[500][500][3];
@@ -456,7 +744,6 @@ void readFromFrontDrawToBack(void)		// read from frontbuf into float arr, draw f
 	// Wont draw if raster pos invalid
 	glDrawPixels(500, 500, GL_RGB, GL_FLOAT, pixelData);
 }
-
 void copyFromFrontWriteToFront(void)		// go to front buffer, bottom left; 0,0; read 500x500, write to 0,0 when go ortho
 {
 	glRasterPos3f(0,0,0);
