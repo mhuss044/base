@@ -54,6 +54,7 @@ CSnake::CSnake(void)
 
 void CSnake::propagate(void)
 {
+/*
 	// Tail takes dir of head
 	for(snakeNode *tempSNode = snakeTail; tempSNode != NULL; tempSNode = tempSNode->prevSNode)
 	{
@@ -67,6 +68,7 @@ void CSnake::propagate(void)
 		tempSNode->pos.x += tempSNode->forwardVec.x*;
 		tempSNode->pos.z += tempSNode->forwardVec.z;
 	}
+*/
 }
 
 void CSnake::processPickup(PICKUP type)

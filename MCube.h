@@ -5,6 +5,7 @@
 // TODO: cubes cant escape smell sensitivity... even though they have tons of food in bag...
 // TODO: cubes transfer food to nearest tribe member in dir of tribe loc, which transfers to enarest member (like a chain), resulting
 //			eventually reaching tribe
+// TODO: cubes get stuck at extremes of map for some reason
 
 // Cube defining header.
 
@@ -489,7 +490,7 @@ public:
     bool desireSectorChange(void);										// Set sector vals, use cubes position, return true if require change of sector
 };
 
-CCube::CCube(int h = GAME_MAP_SIZE_W/2, int v = GAME_MAP_SIZE_H/2)		// Set horizontal & vertical spawn pt; spawn mid map
+CCube::CCube(int h = GAME_MAP_SIZE_X/2, int v = GAME_MAP_SIZE_Z/2)		// Set horizontal & vertical spawn pt; spawn mid map
 {
 	disp.e1 = h;
 	disp.e2 = v;
@@ -517,11 +518,11 @@ void CCube::decNextPath(void)											// Picks next position, or edits positio
 */
 
 	// Keep in bounds:
-	if(disp.e1 > GAME_MAP_SIZE_W || disp.e1 < 0)						// Out of bounds?
-		disp.e1 > GAME_MAP_SIZE_W ? disp.e1 -= 30 : disp.e1 += 30;		//	if true -> disp.e1 -= 30, false then disp.e1 < 0 -> disp.e1 += 30
+	if(disp.e1 > GAME_MAP_SIZE_X || disp.e1 < 0)						// Out of bounds?
+		disp.e1 > GAME_MAP_SIZE_X ? disp.e1 -= 30 : disp.e1 += 30;		//	if true -> disp.e1 -= 30, false then disp.e1 < 0 -> disp.e1 += 30
 
-	if(disp.e2 > GAME_MAP_SIZE_H || disp.e2 < 0)						// Out of bounds?
-		disp.e2 > GAME_MAP_SIZE_H ? disp.e2 -= 30 : disp.e2 += 30;		//	if true -> disp.e2 -= 30, false then disp.e2 < 0 -> disp.e2 += 30
+	if(disp.e2 > GAME_MAP_SIZE_Z || disp.e2 < 0)						// Out of bounds?
+		disp.e2 > GAME_MAP_SIZE_Z ? disp.e2 -= 30 : disp.e2 += 30;		//	if true -> disp.e2 -= 30, false then disp.e2 < 0 -> disp.e2 += 30
 
 	// Add as much as can carry:
 	if(cubesBodyMind.foundFood(disp.e1, disp.e2))                       // Found food?
@@ -979,10 +980,10 @@ bool CCube::desireSectorChange(void)								// Sets sector vals, so reduce compu
 	prevCubeSectorXZ.e2 = cubeSectorXZ.e2;		// Z
 
 	// If X position greater than half of map size width/X, then set sector X coord to be +1
-	disp.e1 > (GAME_MAP_SIZE_W/2) ? cubeSectorXZ.e1 = 1 : cubeSectorXZ.e1 = -1;
+	disp.e1 > (GAME_MAP_SIZE_X/2) ? cubeSectorXZ.e1 = 1 : cubeSectorXZ.e1 = -1;
 
 	// If Z position greater than half of map size height/Z, then set sector Z coord to be +1
-	disp.e2 > (GAME_MAP_SIZE_H/2) ? cubeSectorXZ.e2 = 1 : cubeSectorXZ.e2 = -1;
+	disp.e2 > (GAME_MAP_SIZE_Z/2) ? cubeSectorXZ.e2 = 1 : cubeSectorXZ.e2 = -1;
 
 	// Compare old sector to new sector vals,
 	// 		if changed, require reg into new sec list, and dereg from old sec list
@@ -1866,7 +1867,7 @@ void CCubeGod::cubeLifeCycleandRender(void)										// Draw, and run life cycle
 		{
 			// Run a cycle of a cubes life:
 			tempCubeNode->cube.cubeLifeCycle();									// member cube, of object pointed to by temp
-			// Draw the cube:
+			// Draw the cube: get flickering, so draw every cube at once
 			tempCubeNode->cube.renderSelf();
 
             // Algorithm for tribes to recruit members
@@ -1927,8 +1928,8 @@ void CCubeGod::tribeInit(void)
 	for(int x = 0; x < TRIBE_NUMTRIBES; x++)
 	{
 		// Set birther pos:
-		globalTribes[x].tribeBirtherPos.e1 = rand()%GAME_MAP_SIZE_W + 1;
-		globalTribes[x].tribeBirtherPos.e2 = rand()%GAME_MAP_SIZE_H + 1;
+		globalTribes[x].tribeBirtherPos.e1 = rand()%GAME_MAP_SIZE_X + 1;
+		globalTribes[x].tribeBirtherPos.e2 = rand()%GAME_MAP_SIZE_Z + 1;
 
 		// Set tribe colour:
 		globalTribes[x].tribeColour[0] = (rand()%10)/10.0;		// must be 10.0 or else calculation returns an int, which means 0(white)
@@ -1937,9 +1938,9 @@ void CCubeGod::tribeInit(void)
 
 		// Set tribe sector from birther pos:
 		// If X position greater than half of map size width/X, then set sector X coord to be +1
-		globalTribes[x].tribeBirtherPos.e1 > (GAME_MAP_SIZE_W/2) ? globalTribes[x].tribeSectorXZ.e1 = 1 : globalTribes[x].tribeSectorXZ.e1 = -1;
+		globalTribes[x].tribeBirtherPos.e1 > (GAME_MAP_SIZE_X/2) ? globalTribes[x].tribeSectorXZ.e1 = 1 : globalTribes[x].tribeSectorXZ.e1 = -1;
 		// If Z position greater than half of map size height/Z, then set sector Z coord to be +1
-		globalTribes[x].tribeBirtherPos.e2 > (GAME_MAP_SIZE_H/2) ? globalTribes[x].tribeSectorXZ.e2 = 1 : globalTribes[x].tribeSectorXZ.e2 = -1;
+		globalTribes[x].tribeBirtherPos.e2 > (GAME_MAP_SIZE_Z/2) ? globalTribes[x].tribeSectorXZ.e2 = 1 : globalTribes[x].tribeSectorXZ.e2 = -1;
 
 		// Assign an ID to tribe, for identification purposes.
 		globalTribes[x].tribeID = x;

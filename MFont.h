@@ -31,7 +31,7 @@ void Fps(void)
 	static int fps = 1, FPS = 0;
 	static char sFps[10];
 
-	glColor3f(1.0, 1.0, 1.0);  //Colour Of String
+	glColor3f(0.0, 0.0, 0.0);  //Colour Of String
 	render_string(-100, 95, 0, GLUT_BITMAP_HELVETICA_18, "FPS:");       // Draw the string
 
 	fps++;
@@ -54,7 +54,7 @@ void Fps(void)
 	}
 }
 
-void DrawStrings(void)										// Changes to ortho, writes fps, back to perspective, place in game loop
+void DrawStrings(int windowWidth, int windowHeight, int viewDist)// Changes to ortho, writes fps, back to perspective, place in game loop
 {
 	glDisable(GL_TEXTURE_2D);                                 // Must disable textures during text setup;
                                                               // Without, colours will be obscured.
@@ -62,7 +62,7 @@ void DrawStrings(void)										// Changes to ortho, writes fps, back to perspec
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	glViewport(0, 0, resizeWINWidth, resizeWINHeight);                    //-+-+-+_+_+_+_+_+_+_+_+_
+	glViewport(0, 0, windowWidth, windowHeight);                    //-+-+-+_+_+_+_+_+_+_+_+_
 	glOrtho(-100.0, 100.0, -100.0, 100.0, -100.0, 100.0);     // CHANGE TO 2D
 
 	glMatrixMode(GL_MODELVIEW);
@@ -73,8 +73,8 @@ void DrawStrings(void)										// Changes to ortho, writes fps, back to perspec
 	glMatrixMode(GL_PROJECTION);                             /*-+-+-+_+_+_+_+_+_+_+_+_*/
 	glLoadIdentity();									     /* CHANGE BACK TO 3D   */
 
-	glViewport(0, 0, resizeWINWidth, resizeWINHeight);
-	gluPerspective(45,(float)WINWidth/WINHeight,1,VIEW_DISTANCE);
+	glViewport(0, 0, windowWidth, windowHeight);
+	gluPerspective(45,(float)windowWidth/windowHeight,1,viewDist);
 	glMatrixMode(GL_MODELVIEW);
    // glLoadIdentity();
 

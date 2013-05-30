@@ -1,93 +1,17 @@
 /*
- * MFunctions.h
+ * Utility.h
  *
- *  Created on: Aug 20, 2012
- *      Author: hp
+ *  Created on: May 27, 2013
+ *      Author: EvorateAwMaDemCriAnR
+ *
+ *      Hold non specific functions
+ *
  */
 
-#ifndef MFUNCTIONS_H_
-#define MFUNCTIONS_H_
+#ifndef UTILITY_H_
+#define UTILITY_H_
 
-
-//Many funcs for use.
-
-//*********TYPEDEFS*********
-typedef float RGB[3];
-
-typedef float Mat3x[3][3];
-typedef float Mat2x[2][2];
-typedef float Mat3x4[3][4];                                     // To be compatible with translation matrices
-
-typedef struct Vector3f
-{
-	float e1, e2, e3;		                                    //Elements 1, 2, 3
-}Vec3f;
-
-typedef struct Vector3d
-{
-	int e1, e2, e3;		     	                                //Elements 1, 2, 3
-}Vec3d;
-
-typedef struct Vector2d
-{
-	int e1, e2;			                                    	//Elements 1, 2
-}Vec2d;
-
-typedef struct _Vert3xf
-{
-    float x,y,z;
-}Vert3xf;
-
-typedef struct _Vert3xd
-{
-    int x,y,z;
-}Vert3xd;
-
-typedef struct _Vert2xd				                            //Vertex 2x: 2D, d: integer
-{
-    int x,y;
-}Vert2xd;
-
-typedef struct _Vert2x
-{
-    float x,y;
-}Vert2x;
-
-typedef struct _Vert2xf
-{
-    float x,y;
-}Vert2xf;
-
-typedef struct _point
-{
-  float x,y;
-  //point(){x=y=0.0;                                            //Shud include this?
-} Point2x;
-
-typedef struct _Face4xV				   //A three vertice face. For triangular faces.
-{
-	Vert3xf v1, v2, v3, v4;
-}Face4xV;
-
-/*
-typedef struct Face3x				   //A three vertice face. For triangular faces.
-{
-	int a1, b2, c3, id;				   //NO NEED FOR THIS
-}Face3x;
-*/
-typedef struct _Face4x				   //Type to hold faces.
-{
-	int a1[2], b2[2], c3[2], d4[2];	   //The elements are individual verticies,
-									   //Two elements: [0]: Vertex number(1-numVerts),
-									   //[1]:Texture Coord num(1-4)
-	GLint tId;						   //tId: is the faces' texture id.
-	char cnfg;						   //cnfg: either P: polygon, or T: triangle. (its the face type)
-}Face4x;
-
-typedef struct _Bounds
-{
-	float minX, maxX, minY, maxY, minZ, maxZ;
-}Bounds;
+#include <CommonTypes.h>		// Require types for below funcs;
 
 //  UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS:
 //  UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS:
@@ -132,7 +56,7 @@ void RadToDeg(float *rad)
     *rad = float(((*rad)*180)/PI);
 }
 
-float Round(const float &number, const int num_digits)  //Got this from: http://www.codeproject.com/cpp/floatutils.asp
+float Round(const float &number, const int num_digits)  //Got this from: http://www.codeproject.com/cpp/ffile:///C:/Users/EvorateAwMaDemCriAnR/Documents/Programming%20Work/Modern%20GL%20Tutorial%200.3.7/Tutorial%200.3.7/html/Positioning/AngleAxisRotationMatrix.svgloatutils.asp
 {
     float doComplete5i, doComplete5(number * powf(10.0f, (float) (num_digits + 1)));
 
@@ -239,6 +163,48 @@ float Distance2V(Vert3xd *p1, Vert3xd *p2)
 	return dist;
 }
 
+float dotProduct(Vert3xf vec1, Vert3xf vec2)		// Two vectors, returns real number
+{
+	return vec1.x*vec2.x+vec1.y*vec2.y+vec1.z*vec2.z;
+}
+
+void radiansAngleV1V2(Vert3xf v1, Vert3xf v2)
+{
+//	return cosInverse(dotProduct(v1,v2)/((dotProduct(v1,v1)/dotProduct(v1,v1))*(dotProduct(v1,v1)/dotProduct(v1,v1))))
+}
+
+void crossProduct3V(Vert3xf v1, Vert3xf v2, Vert3xf v3, Vert3xf *crossProduct)
+{
+	crossProduct->x = (v2.y-v1.y)*(v3.z-v1.z) - (v2.z-v1.z)*(v3.y-v1.y);
+	crossProduct->y = (v2.z-v1.z)*(v3.x-v1.x) - (v2.x-v1.x)*(v3.z-v1.z);
+	crossProduct->z = (v2.x-v1.x)*(v3.y-v1.y) - (v2.y-v1.y)*(v3.x-v1.x);
+}
+
+void lengthProjectionV1onV2()
+{
+
+}
+
+void normalize(Vert2xf *vec)
+{
+	vec->x = vec->x/(abs(vec->x));
+	vec->y = vec->y/(abs(vec->y));
+}
+
+void normalize(Vert3xf *vec)
+{
+	vec->x = vec->x/(abs(vec->x));
+	vec->y = vec->y/(abs(vec->y));
+	vec->z = vec->z/(abs(vec->z));
+}
+
+void normalize(float *vec)
+{
+	vec[0] = vec[0]/(abs(vec[0]));
+	vec[1] = vec[1]/(abs(vec[1]));
+	vec[2] = vec[2]/(abs(vec[2]));
+}
+
 void ZeroVard(int &var, int condition)	                        //'Vard': variable, integer
 {																//This is made for rotation variables,
 	if(var >= condition)										//so they dont get too big..
@@ -324,6 +290,16 @@ void PrintMat(Mat3x4 mat)
         for(int y = 0; y < 4; y++)
             cout << mat[x][y] << ",";
     }
+}
+
+void MakeArbitraryAxisRotMat3x4(Mat3x4 mat, float Degrees, float axisX, float axisY, float axisZ)// Make a rotation matrix using an specific axis
+{
+  float radians = Degrees * (PI / 180), Xsq = pow(axisX,2), Ysq = pow(axisY,2), Zsq = pow(axisZ,2);
+  float aC = cos(radians), aS = sin(radians), iC = 1 - cos(radians);
+
+  mat[0][0] = Xsq + (1 - Xsq)*aC;			mat[0][1] = iC*axisX*axisY - axisZ*aS;	mat[0][2] = iC*axisX*axisZ + axisY*aS;	mat[0][3] = 0.0;
+  mat[1][0] = iC*axisX*axisY + axisZ*aS;	mat[1][1] = Ysq + (1 - Ysq)*aC; 		mat[1][2] = iC*axisY*axisZ - axisX*aS;	mat[1][3] = 0.0;
+  mat[2][0] = iC*axisX*axisZ - axisY*aS;	mat[2][1] = iC*axisY*axisZ + axisX*aS; 	mat[2][2] = Zsq + (1 - Zsq)*aC;			mat[2][3] = 0.0;
 }
 
 void MakeRotMat3x4(Mat3x4 mat, float Degrees, int x, int y, int z)      // ints to specify axis to rotate around.
@@ -434,6 +410,10 @@ void MultMat2x1(Vert2x& product,Mat2x matrix, Vert2x& vertex)
     product.y = (temp * matrix[1][0]) + (vertex.y * matrix[1][1]);
 }
 
+
+/*************** TRANSFORM ******************
+********************************************/
+
 void TranslateV1x(float xTrans, float yTrans, Vert2x& vertex)
 {
     vertex.x = vertex.x + xTrans;
@@ -500,7 +480,6 @@ void RotatePolyPt(float Px, float Py, float Degrees, int NumVerts, Vert2x Verts[
 	    Verts[x].y += Py;
 	}
 }
-
 
 /** DRAWING FUNCS ***********
 *****************************/
@@ -976,4 +955,5 @@ void DrawObj4x(objA4x MyObj)
 */
 
 
-#endif /* MFUNCTIONS_H_ */
+
+#endif /* UTILITY_H_ */

@@ -15,5 +15,9 @@
 
 // result; real time membrane simulation, when apply force to point in memb, memb reacts to accomodate
 
+// evaporating;
+//		circ memb gradually delete nodes, get smaller, shrinking effect
+//		water on hot surface
+
 
 #endif /* CIRCULARMEMBRANE_H_ */

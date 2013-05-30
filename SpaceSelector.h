@@ -190,8 +190,8 @@ public:
 	void drawColourCodedSelectables(void);
 	bool addToSelectablesList(void (*drawFunc)(void), const char *name);
 	void evaluateNextColour(void);
-	void detectSelection(Vert3xf *camPos, Vert3xf *viewPt);		// Upon mouse click
-
+	void detectSelection3D(int mouseX, int mouseY, Vert3xf *camPos, Vert3xf *viewPt);		// Upon mouse click
+	void detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight);
 };
 
 CColourCodedSelection::CColourCodedSelection(void)
@@ -296,15 +296,18 @@ bool CColourCodedSelection::addToSelectablesList(void (*drawFunc)(void), const c
 	return true;
 }
 
-void CColourCodedSelection::detectSelection(Vert3xf *camPos, Vert3xf *viewPt)
+void CColourCodedSelection::detectSelection3D(int mouseX, int mouseY, Vert3xf *camPos, Vert3xf *viewPt)
 {
 	// Draw Selectables; drawing to back buffer; user doesnt see any of this
 	// MUST BE IDENTICAL DRAWING SETUP AS IN MAIN LOOP; camera, transforms,
 	// must be perfect transforms as where they normally are:
+	enterPerspective(0, 0, WINWidth, WINHeight, VIEW_DISTANCE);
+	/*
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();													// This is so that previous transformations do not accum
 	gluPerspective(45,(float)WINWidth/WINHeight,1,VIEW_DISTANCE);
 	glMatrixMode(GL_MODELVIEW);
+*/
 
 	// BLank slate; pixel colour info, and depth component of pixels
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.
@@ -324,7 +327,55 @@ void CColourCodedSelection::detectSelection(Vert3xf *camPos, Vert3xf *viewPt)
 	// Specify source buffer to read from;
 	glReadBuffer(GL_BACK);
 	// Read pixel data
-	glReadPixels(mousePosX, (WINHeight-mousePosY), 1, 1, GL_RGB, GL_FLOAT, pixelData);		// lower left of buffer, size, format, type, array
+	glReadPixels(mouseX, (WINHeight-mouseY), 1, 1, GL_RGB, GL_FLOAT, pixelData);		// lower left of buffer, size, format, type, array
+	cout << INS << highest01(pixelData[0][0][0]) << ", " << highest01(pixelData[0][0][1]) << ", " << highest01(pixelData[0][0][2]);
+
+	// Clear back buffer as to allow real scene to be drawn without the previous obstructing it
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// detect selected;
+	// if list is empty;
+	if(selectablesHead == NULL)
+	{
+		return;
+	}
+	else
+	{
+		// Find the colour which matches;
+		for(CSelectableNode *tempNode = selectablesHead; tempNode != NULL;  tempNode = tempNode->nextSelectable)
+		{
+			// colour will always be whole here, ie 0.1, 0.3, and pixel data is rounded to whole, so can be compared this way
+			if(tempNode->colour.x == highest01(pixelData[0][0][0]))
+				if(tempNode->colour.y == highest01(pixelData[0][0][1]))
+					if(tempNode->colour.z == highest01(pixelData[0][0][2]))
+					{
+						cout << INS << tempNode->name << ", selected.";
+						break;		// Found the correct selectable, so stop traversing the rest of the list
+					}
+		}
+	}
+}
+
+void CColourCodedSelection::detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight)
+{
+	// Draw Selectables; drawing to back buffer; user doesnt see any of this
+	// MUST BE IDENTICAL DRAWING SETUP AS IN MAIN LOOP; camera, transforms,
+	// must be perfect transforms as where they normally are:
+	enterOrthographic(-(OrthoWidth/2), (OrthoWidth/2), -(OrthoHeight/2), (OrthoHeight/2), 0, 0, 0, 0, resizeWINWidth, resizeWINHeight)
+
+	// BLank slate; clear pixel colour info, and depth component of pixels
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.
+																		//Also specifies what to clear.(COLOR BUFFER)
+																		// Have to clear buffer bit bcs dont want previous drawn items to be atop the following drawn items?
+	// Draw selectables
+	drawColourCodedSelectables();
+
+	// Read frame buffer
+	float pixelData[1][1][3];
+	// Specify source buffer to read from;
+	glReadBuffer(GL_BACK);
+	// Read pixel data
+	glReadPixels(mouseX, (WINHeight-mouseY), 1, 1, GL_RGB, GL_FLOAT, pixelData);		// lower left of buffer, size, format, type, array
 	cout << INS << highest01(pixelData[0][0][0]) << ", " << highest01(pixelData[0][0][1]) << ", " << highest01(pixelData[0][0][2]);
 
 	// Clear back buffer as to allow real scene to be drawn without the previous obstructing it
@@ -371,7 +422,6 @@ public:
 	void getHitName(void); 		// parses selection buffer, returning name selected
 	int processMouseSelection(void);
 	int processMouseSelScene(int mousePosX, int mousePosY);
-	int processMouseSelCubeArr(CSelectableBox *Headint, int length);		// run through items, return selected item#
 };
 CSelection::CSelection(void)
 {
@@ -570,10 +620,7 @@ int CSelection::processMouseSelScene(int mousePosX, int mousePosY)
 
     getHitName();
 }
-int CSelection::processMouseSelCubeArr(CSelectableBox *Head, int length)
-{
 
-}
 void selection(void)
 {
 	GLuint selecBuf[1024], hitsCnt = 0;
