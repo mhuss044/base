@@ -4,45 +4,19 @@
  *  Created on: Sep 29, 2012
  *      Author: EvorateAwMaDemCriAnR
  *
+ *
+ *		NEEDS TO BE CHECKED OVER;
+ *			- delete list funcs
+ *			- crash scen
+ *
+ *		Gets;
+ *			- fully customizable menus; add textures, onHover, collapsable(onMenuSelected)
+ *			- transition animations
+ *
  *      k want;
  *      	this draws GUI depending on what user wants
  *      	have func to set GUIs; allowing GUI class to cater to all projects
  *      	have func to set gui ptr, so draw
- *
- *
- *
- *		strat 1;
- *			create menus in init, set their callbacks, set their activatin key
- *
- *	CGUI newGUI
- *
- *	const char *menuItemText = {
- *								"string1",
- *								"string2"
- *								};
- *	array of fuction ptrs[2] = {};
- *
- *	struct menuItemData
- *	{
- *		const char *text;
- *		void (*callBack)(void);
- *	}
- *
- *	newGUI.addMenu()
- *
- *
- *		strat 2;
- *			predefined menues with already set keys, just fill em with callback&text
- *
- *
- *			newGUI.escMenuDefinition(arrayMenuText, arrayCallbacks);
- *			newGUI.headerMenuDefinition(arrayMenuText, arrayCallbacks);
- *			newGUI.footerMenuDefinition(arrayMenuText, arrayCallbacks);
- *			newGUI.leftMenuDefinition(arrayMenuText, arrayCallbacks);
- *			newGUI.rightMenuDefinition(arrayMenuText, arrayCallbacks);
- *			newGUI.squareMenuDefinition(arrayMenuText, arrayCallbacks);
- *
- *
  *
  *		got a esc menu to show up upon key press and disp on keypress, no mouse select yet
  *
@@ -55,6 +29,16 @@
  *
  *
  *		callback, listener
+ *		how to dynamically change menu items?
+ *		how dynamically change menus in a menu state?
+ *			scope issue here, only main.cpp has access to GUIstate
+ *			Global data structure holding modifyable fields,
+ *				have a class; 'menu modifyer', reads thsi struc, changes menus accordingly
+ *
+ *		TRY AND RUN WITH; CLEAR+SWAP+SWAP, AND WITH CLEAR+CLEAR+SWAP
+ *
+ *		Future;
+ *			get GUIsys to read from .gui file and load GUI
  */
 
 #ifndef CGUI_H_
@@ -213,38 +197,274 @@ void CMenu::deleteMenuItemsList(void)
 class CMenuNode
 {
 public:
-	CMenu *menu, *nextMenu;
+	CMenu *menu;
+	CMenuNode *nextMenuNode;
 
-	CMenuNode(MENU_STYLE menuStyle, const char* itemText, void (*callBackFunc)(void));
+	CMenuNode(MENU_STYLE menuStyle, const char* headingText);		// Make a new menu, providing params;CANT USE? BCS ITS A NODE.. SO CANT SPECIFY MENU ITEMS?
+	CMenuNode(CMenu *menuToAttach);									// Add existing menu
+	~CMenuNode();
 };
 
-CMenuNode::CMenuNode()
+CMenuNode::CMenuNode(MENU_STYLE menuStyle, const char* headingText)
 {
-
+	menu = new CMenu(menuStyle, headingText);
+	nextMenuNode = NULL;
 }
 
-class CMenuState							// Defines a screenful of menues
+CMenuNode::CMenuNode(CMenu *menuToAttach)
+{
+	menu = menuToAttach;
+	nextMenuNode = NULL;
+}
+
+CMenuNode::~CMenuNode(void)
+{
+	// Delete menu;
+	if(menu != NULL)
+		delete menu;
+}
+
+class CGUIState								// Defines a screenful of menues
 {
 private:
-	GUI_STATE_TYPE guiStateType;
-	CMenu *menuListHead;					// List of menues to display
+//	GUI_STATE_TYPE guiStateType;
+	CMenuNode *menuListHead;				// List of menues to display
+	void (*scenePtr)(void);					// dont need blocking/non, just check for null. If NON_BLOCKING type, Func holds draw calls that the HUD is to be overlaid upon
 public:
-	CMenuState(GUI_STATE_TYPE guiType);
-	~CMenuState();
-	GUI_STATE_TYPE getStateType(void);
-	CMenu *getMenuListHead(void);
+	CGUIState(void (*sPtr)(void));
+	CGUIState(void);
+	~CGUIState();
+	void drawScene(void);					// Calls scenePtr; points to draw calls for scene
+	CMenuNode *getMenuListHead(void);
 	void addMenu(CMenu *menuToAdd);
-	void deleteMenuList(void);				// Deletes all menuesin list
+	void deleteMenuNodeList(void);			// Deletes all menues in list
 };
 
-CMenuState::CMenuState(GUI_STATE_TYPE guiType)
+CGUIState::CGUIState(void (*sPtr)(void))
 {
-	guiStateType = guiType;
+	menuListHead = NULL;
+	scenePtr = sPtr;
 }
 
-CMenuState::~CMenuState()
+CGUIState::CGUIState(void)
 {
+	menuListHead = NULL;
+	scenePtr = NULL;
+}
 
+CGUIState::~CGUIState()
+{
+	deleteMenuNodeList();
+}
+
+void CGUIState::drawScene(void)
+{
+	if(scenePtr != NULL)
+		scenePtr();								// Call draw funcs
+}
+
+void CGUIState::addMenu(CMenu *menuToAdd)
+{
+	CMenuNode *tempNode = NULL;
+
+	if(menuListHead != NULL)
+	{
+		// Find tail;
+		for(tempNode = menuListHead; tempNode->nextMenuNode != NULL; tempNode = tempNode->nextMenuNode);
+		tempNode->nextMenuNode = new CMenuNode(menuToAdd);
+	}
+	else
+	{
+		menuListHead = new CMenuNode(menuToAdd);
+	}
+}
+
+void CGUIState::deleteMenuNodeList(void)
+{
+	if(menuListHead != NULL)
+	{
+		for(CMenuNode *tempNode = menuListHead; tempNode != NULL; tempNode = menuListHead)
+		{
+			menuListHead = menuListHead->nextMenuNode;
+			delete tempNode;
+		}
+	}
+}
+
+class CGUIStateNode
+{
+private:
+	int GUIStateNodeID;
+public:
+	CGUIState *GUIState;
+	CGUIStateNode *nextGUIStateNode;
+
+	CGUIStateNode(void (*sPtr)(void), int ID);											// Make a new gui state, providing params
+	CGUIStateNode(CGUIState *GUIStateToAttach, int ID);									// Add existing gui state
+	~CGUIStateNode();
+	int getGUIStateNodeID(void);
+};
+
+CGUIStateNode::CGUIStateNode(void (*sPtr)(void), int ID)
+{
+	GUIState = new CGUIState(sPtr);
+	GUIStateNodeID = ID;
+}
+
+CGUIStateNode::CGUIStateNode(CGUIState *GUIStateToAttach, int ID)
+{
+	GUIState = GUIStateToAttach;
+	GUIStateNodeID = ID;
+}
+
+CGUIStateNode::~CGUIStateNode(void)
+{
+	// Delete menu;
+	if(GUIState != NULL)
+		delete GUIState;
+}
+
+int CGUIStateNode::getGUIStateNodeID(void)
+{
+	return GUIStateNodeID;
+}
+
+// GUI System class
+//		Swaps gui states to be displayed on the screen
+//		Have global, application specific handles to GUI screens(GUI states), define the keypress that setsGUIState(state); app specific
+//			This allows applications the responsibility of tracking their GUI states
+//			Easy cleanup; since handles are global, CGUISystem add em to its list of GUIs, onClose = delete list of GUIStates = delete asociated menus+menuItems
+//		Danger; if define a gui state, pass it to GUIsys to display, but dont addGUIState first; get hanging handle, wont be deleted
+//			Put in setCurrentGUIState a check to see if in list?
+class CGUISystem
+{
+private:
+	CGUIStateNode *guiStateNodeHead, *currentGUIStateNode;
+	int currentID, GUI_OrthoWidth, GUI_OrthoHeight;
+public:
+	CGUISystem(CGUIStateNode *GUIStateHead);		// Accept list of gui states
+	CGUISystem(void);
+	~CGUISystem();
+	void deleteGUIStateNodes(void);
+	//void addGUIStateNode(CGUIStateNode *GUIStateNode);
+	int addGUIState(CGUIState *GUIState);
+	CGUIStateNode *getCurrentGUIStateNode(void);
+	int getCurrentGUIStateNodeID(void);
+	bool setCurrentGUIState(CGUIStateNode *currGUINode);
+	bool setCurrentGUIState(int ID);
+	void render(void);								// Draws scene and GUI
+};
+
+CGUISystem::CGUISystem(CGUIStateNode *GUIStateHead)
+{
+	guiStateNodeHead = GUIStateHead;
+	currentGUIstate = guiStateNodeHead;
+	currentID = 0;
+}
+
+CGUISystem::CGUISystem(void)
+{
+	guiStateNodeHead = NULL;
+	currentGUIstate = guiStateNodeHead;
+	currentID = 0;
+}
+
+CGUISystem::~CGUISystem()
+{
+	deleteGUIStateNodes(void);
+}
+
+void CGUISystem::deleteGUIStateNodes(void)
+{
+	if(guiStateNodeHead != NULL)
+		{
+			for(CGUIStateNode *tempNode = guiStateNodeHead; tempNode != NULL; tempNode = guiStateNodeHead)
+			{
+				guiStateNodeHead = guiStateNodeHead->nextGUIStateNode;
+				delete tempNode;
+			}
+		}
+}
+
+int CGUISystem::addGUIState(CGUIState *GUIState)
+{
+	CGUIStateNode *tempNode = NULL;
+
+	if(guiStateNodeHead != NULL)
+	{
+		// Find tail;
+		for(tempNode = guiStateNodeHead; tempNode->nextGUIStateNode != NULL; tempNode = tempNode->nextGUIStateNode);
+		tempNode->nextGUIStateNode = new CGUIStateNode(GUIState, currentID);
+		currentID++;
+	}
+	else
+	{
+		guiStateNodeHead = new CGUIStateNode(GUIState, currentID);
+		currentGUIStateNode = guiStateNodeHead;		// Set head to currNode
+		currentID++;
+	}
+
+	return currentID - 1;		// Provide handle to this GUI state
+}
+
+CGUIStateNode *CGUISystem::getCurrentGUIStateNode(void)
+{
+	return currentGUIStateNode;
+}
+
+int CGUISystem::getCurrentGUIStateNodeID(void)
+{
+	return currentGUIStateNode->getGUIStateNodeID();
+}
+
+bool CGUISystem::setCurrentGUIState(CGUIStateNode *currGUINode)			// Probably a bad idea..
+{
+	currentGUIStateNode = currGUINode;
+	return true;
+}
+
+bool CGUISystem::setCurrentGUIState(int ID)
+{
+	for(CGUIStateNode *tempNode = guiStateNodeHead; tempNode->nextGUIStateNode != NULL; tempNode = tempNode->nextGUIStateNode)
+	{
+		if(ID == tempNode->getGUIStateNodeID())
+		{
+			currentGUIStateNode = tempNode;
+			return true;
+		}
+	}
+	return false;		// Cant find ID
+}
+
+CGUISystem::render(void)
+{
+	// BLank slate; pixel colour info, and depth component of pixels
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.
+																		//Also specifies what to clear.(COLOR BUFFER)
+																		// Have to clear buffer bit bcs dont want previous drawn items to be atop the following drawn items?
+    // Blank matrix;
+	glLoadIdentity();		// Important to have a blank modelview matrix so that previous manipulations do not skew the following manipulations
+
+	if(currentGUIStateNode != NULL)				// Draw GUI
+	{
+		// Draw Scene: this is first so that GUI is overlaid on top; also bcs probably contains glClear
+		currentGUIStateNode->GUIState->drawScene();
+
+		// Draw GUI
+		enterOrthographic(-100, 100, -100, 100, -100, 100, 0, 0, resizeWINWidth, resizeWINHeight);
+
+		enterPerspective(0, 0, resizeWINWidth, resizeWINHeight, VIEW_DISTANCE);
+	}
+	else
+	{
+		// Draw error GUI
+		// Error, current GUI state is not defined
+	}
+
+	// Done drawing; put onto screen;
+//	glFlush();                               		/*Ensures all commands processed; single buffer  */
+	glutSwapBuffers();								// this is required in double buffer mode, or else see nothing; require addition of GLUT_DOUBLE in glutInitDisplayMode at init
+	glutPostRedisplay();							// fix flickering? nop
 }
 
 // handles gui drawing/input handling
