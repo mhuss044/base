@@ -10,6 +10,29 @@
 #ifndef ANIMATION_H_
 #define ANIMATION_H_
 
+class CBone
+{
+private:
+	int *AttachedVerts;			// Ptr to arr of index vals of a vertex array; get which verticies are attached to this bone
+	float *vertArr;				// Array of verts associated with this bone
+public:
+};
+
+class CBoneNode
+{
+private:
+
+public:
+};
+
+class CSkeleton
+{
+private:
+	CBoneNode *boneListHead;
+public:
+	void addBone(CBoneNode *boneToAdd);
+};
+
 class CAnimInfo
 {
 public:
