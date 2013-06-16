@@ -28,7 +28,6 @@
  *		-allow menu states to hold drawing funcs,,,, ie entire screens .....
  *
  *
- *		callback, listener
  *		how to dynamically change menu items?
  *		how dynamically change menus in a menu state?
  *			scope issue here, only main.cpp has access to GUIstate
@@ -39,6 +38,14 @@
  *
  *		Future;
  *			get GUIsys to read from .gui file and load GUI
+ *			pass bitmap pixel array to CMenu() to use as backdrop
+ *			pass bitmap pixel array to CMenuItem to use as backdrop
+ *			pass transform values to CMenu to customize default width/height of menu
+ *			pass transform values to CMenuItem to customize width/height of menuItems
+ *
+ *			custom vert menus;
+ *				pass VBO, texCoordArr to CMenu; get custom shape menu
+ *				pass ", " to CMenuItem; get custom shape menu item
  */
 
 #ifndef CGUI_H_
@@ -48,9 +55,28 @@
 // Will have to change these values when have strange window shapes, or strange resolutions?
 #define GUI_ORTHO_WIDTH 200			// Make this an even number
 #define GUI_ORTHO_HEIGHT 200
-#define GUI_MENU_INSET_LENGTH 10	// Length of the inset to use in the default menu drawing funcs
-#define GUI_MENU_ITEM_PADDING 10	// Length of distance from left most boundary of a menu
-#define GUI_MENU_ITEM_BETWEEN_PADDING 10// Length of distance between items in a menu
+#define GUI_MENU_INSET_LENGTH 10		// Length of the inset to use in the default menu drawing funcs
+#define GUI_EDGE_PADDING 10				// Length of distance from boundary; menu boundary/menu item, screen edge/menu
+#define GUI_MENU_ITEM_PADDING 10		// Length of distance between items in a menu
+
+// Define default positions of menu types;
+#define GUI_MENU_ROW_WIDTH_FACTOR 0.17															// 0.16 = 1/6, 0.2 = 1/5 of screen width taken by row menu
+#define GUI_MENU_ROW_HEIGHT_FACTOR 0.75
+#define GUI_MENU_COLUMN_WIDTH_FACTOR 0.75
+#define GUI_MENU_COLUMN_HEIGHT_FACTOR 0.1			 											// 0.1 = Column menu height is 1/10 of max height
+
+#define GUI_MENU_ROW_CENTER_X -(GUI_ORTHO_WIDTH/4)												// Orthogonal plane coordinates, not window coords
+#define GUI_MENU_ROW_CENTER_Y (GUI_ORTHO_HEIGHT/4)
+#define GUI_MENU_ROW_LEFT_X -(GUI_ORTHO_WIDTH/2) + GUI_EDGE_PADDING								// So just beside edge of screen
+#define GUI_MENU_ROW_LEFT_Y (GUI_ORTHO_HEIGHT/2) - GUI_MENU_COLUMN_HEIGHT_FACTOR - GUI_EDGE_PADDING	// bcs need room for header menu
+#define GUI_MENU_ROW_RIGHT_X (GUI_ORTHO_WIDTH/2) - GUI_EDGE_PADDING - GUI_MENU_ROW_WIDTH_FACTOR		// So just beside edge of screen
+#define GUI_MENU_ROW_RIGHT_Y (GUI_ORTHO_HEIGHT/2) - GUI_MENU_COLUMN_HEIGHT_FACTOR - GUI_EDGE_PADDING	// bcs need room for header menu
+#define GUI_MENU_COLUMN_HEADER_X -(GUI_ORTHO_WIDTH/2) + GUI_EDGE_PADDING
+#define GUI_MENU_COLUMN_HEADER_Y (GUI_ORTHO_HEIGHT/2) - GUI_EDGE_PADDING
+#define GUI_MENU_COLUMN_FOOTER_X -(GUI_ORTHO_WIDTH/2) + GUI_EDGE_PADDING
+#define GUI_MENU_COLUMN_FOOTER_Y -(GUI_ORTHO_HEIGHT/2) + GUI_EDGE_PADDING
+#define GUI_MENU_SQUARE_X (GUI_ORTHO_WIDTH/4)
+#define GUI_MENU_SQUARE_Y (GUI_ORTHO_HEIGHT/4)
 
 #include <MFont.h>					// Need render_string()
 
@@ -76,7 +102,8 @@ enum MENU_STYLE						// Menu styles; ie types of menu layouts
 	MENU_STYLE_COLUMN_HEADER,		// Header area; "
 	MENU_STYLE_COLUMN_FOOTER,		// Footer area; "
 	MENU_STYLE_SQUARE_CENTER,		// Center screen; Display items in a square orientation
-	MENU_STYLE_SQUARE_MOUSE			// Try and orient this menus pos relative to mouse pos; context menu
+	MENU_STYLE_SQUARE_MOUSE,		// Try and orient this menus pos relative to mouse pos; context menu
+	MENU_STYLE_CUSTOM				// Shape, position, is defined via vbo's
 };
 
 // Used to position the a menu on the screen via translating the default menu position
@@ -87,24 +114,24 @@ typedef struct _menuTransform
 
 // Background appearance of menu
 // These are basic, user can define their own, add via func ptr@CMenu constructor
-void defaultRowMenuBackdrop(void)
+void defaultRowMenuBackdrop(int screenWidth, int screenHeight)
 {
 	glColor3f(1.0,1.0,1.0);
 	glColor3f(1, 0.0, 0.0);									// using glColor3i results in black, always ???
-	DrawRectanlge(-(GUI_ORTHO_WIDTH/4), (GUI_ORTHO_WIDTH/4), -((GUI_ORTHO_HEIGHT/2)-10), ((GUI_ORTHO_HEIGHT/2)-10));
+	DrawRectanlge(-(screenWidth/4), (screenWidth/4), -((screenHeight/2) + GUI_EDGE_PADDING), ((screenHeight/2) - GUI_EDGE_PADDING));
 	glColor3f(1.0,1.0,1.0);
 	glColor3f(0, 0.0, 0.0);									// using glColor3i results in black, always ???
-	DrawRectanlge(-(GUI_ORTHO_WIDTH/4) + GUI_MENU_INSET_LENGTH , (GUI_ORTHO_WIDTH/4) - GUI_MENU_INSET_LENGTH , -((GUI_ORTHO_HEIGHT/2)-10) + GUI_MENU_INSET_LENGTH , ((GUI_ORTHO_HEIGHT/2)-10) - GUI_MENU_INSET_LENGTH );
+	DrawRectanlge(-(screenWidth/4) + GUI_MENU_INSET_LENGTH , (screenWidth/4) - GUI_MENU_INSET_LENGTH , -((screenHeight/2) + GUI_EDGE_PADDING) + GUI_MENU_INSET_LENGTH , ((screenHeight/2) - GUI_EDGE_PADDING) - GUI_MENU_INSET_LENGTH);
 }
 
-void defaultColumnMenuBackdrop(void)
+void defaultColumnMenuBackdrop(int screenWidth, int screenHeight)
 {
 	glColor3f(1.0,1.0,1.0);
 	glColor3f(1, 0.0, 0.0);									// using glColor3i results in black, always ???
-	DrawRectanlge(-((GUI_ORTHO_WIDTH/2)-10), ((GUI_ORTHO_WIDTH/2)-10), (GUI_ORTHO_HEIGHT/2) - 20, (GUI_ORTHO_HEIGHT/2) - 10);
+	DrawRectanlge(-((screenWidth/2) + GUI_EDGE_PADDING), ((screenWidth/2) - GUI_EDGE_PADDING), (screenHeight/2) - 20, (screenHeight/2) - GUI_EDGE_PADDING);
 	glColor3f(1.0,1.0,1.0);
 	glColor3f(0, 0.0, 0.0);									// using glColor3i results in black, always ???
-	DrawRectanlge(-((GUI_ORTHO_WIDTH/2)-10) + GUI_MENU_INSET_LENGTH , ((GUI_ORTHO_WIDTH/2)-10) - GUI_MENU_INSET_LENGTH , ((GUI_ORTHO_HEIGHT/2) - 30) + GUI_MENU_INSET_LENGTH , ((GUI_ORTHO_HEIGHT/2) - 10) - GUI_MENU_INSET_LENGTH );
+	DrawRectanlge(-((screenWidth/2)-10) + GUI_MENU_INSET_LENGTH , ((screenWidth/2)-10) - GUI_MENU_INSET_LENGTH , ((screenHeight/2) - 30) + GUI_MENU_INSET_LENGTH , ((screenHeight/2) - 10) - GUI_MENU_INSET_LENGTH );
 }
 
 void defaultSquareMenuBackdrop(void)
@@ -118,18 +145,54 @@ public:
 	const char* menuItemText;
 	MENU_ITEM_STYLE style;
 	void (*callBack)(void);
+	RGB *itemTextureRGB;					// Array of float[3] holding texture to use for menu item
+	RGBA *itemTextureRGBA;					// Array of float[4] holding texture to use for menu item
 
 	CMenuItemNode *nextMenuItem;
 
 	CMenuItemNode(MENU_ITEM_STYLE itemStyle, const char* itemText, void (*callBackFunc)(void));
+	CMenuItemNode(const char* itemText, void (*callBackFunc)(void), RGB *pixelArr);
+	CMenuItemNode(const char* itemText, void (*callBackFunc)(void), RGBA *pixelArr);
+	~CMenuItemNode();
 };
 
-CMenuItemNode::CMenuItemNode(MENU_ITEM_STYLE itemStyle, const char* itemText, void (*callBackFunc)(void))
+CMenuItemNode::CMenuItemNode(MENU_ITEM_STYLE itemStyle, const char* itemText, void (*callBackFunc)(void))		// can make these 3 constructors into 1 via default args
 {
 	nextMenuItem = NULL;
 	menuItemText = itemText;
 	callBack = callBackFunc;
 	style = itemStyle;
+
+	itemTextureRGB = NULL;
+	itemTextureRGBA = NULL;
+}
+
+CMenuItemNode::CMenuItemNode(const char* itemText, void (*callBackFunc)(void), RGB *pixelArr)
+{
+	nextMenuItem = NULL;
+	menuItemText = itemText;
+	callBack = callBackFunc;
+	style = MENU_ITEM_RECTANGULAR;		// Set to default style
+	itemTextureRGB = pixelArr;
+	itemTextureRGBA = NULL;
+}
+
+CMenuItemNode::CMenuItemNode(const char* itemText, void (*callBackFunc)(void), RGBA *pixelArr)
+{
+	nextMenuItem = NULL;
+	menuItemText = itemText;
+	callBack = callBackFunc;
+	style = MENU_ITEM_RECTANGULAR;		// Set to default style
+	itemTextureRGB = NULL;
+	itemTextureRGBA = pixelArr;
+}
+
+CMenuItemNode::~CMenuItemNode()
+{
+	if(itemTextureRGB != NULL)
+		delete itemTextureRGB;
+	if(itemTextureRGBA != NULL)
+		delete itemTextureRGBA;
 }
 
 class CMenu								// Menu which lists items in decending rows
@@ -139,7 +202,11 @@ private:
 	CMenuItemNode *menuItemsHead;
 public:
 	const char *menuHeadingText;
+	RGB *menuTextureRGB;					// Array of float[3] holding texture to use as backdrop for menu
+	RGBA *menuTextureRGBA;					// Array of float[4] holding texture to use as backdrop for menu
 	CMenu(MENU_STYLE _menuStyle, const char *headingText);
+	CMenu(MENU_STYLE _menuStyle, const char *headingText, RGB *pixelArr);
+	CMenu(MENU_STYLE _menuStyle, const char *headingText, RGBA *pixelArr);
 	~CMenu();
 	MENU_STYLE getMenuStyle(void);
 	CMenuItemNode *getMenuItemHead(void);
@@ -152,11 +219,36 @@ CMenu::CMenu(MENU_STYLE _menuStyle, const char *headingText)
 	menuItemsHead = NULL;
 	menuStyle = _menuStyle;
 	menuHeadingText = headingText;
+	menuTextureRGB = NULL;
+	menuTextureRGBA = NULL;
+}
+
+CMenu::CMenu(MENU_STYLE _menuStyle, const char *headingText, RGB *pixelArr)
+{
+	menuItemsHead = NULL;
+	menuStyle = _menuStyle;
+	menuHeadingText = headingText;
+	menuTextureRGB = pixelArr;
+	menuTextureRGBA = NULL;
+}
+
+CMenu::CMenu(MENU_STYLE _menuStyle, const char *headingText, RGBA *pixelArr)
+{
+	menuItemsHead = NULL;
+	menuStyle = _menuStyle;
+	menuHeadingText = headingText;
+	menuTextureRGBA = pixelArr;
+	menuTextureRGB = NULL;
 }
 
 CMenu::~CMenu(void)
 {
 	deleteMenuItemsList();
+
+	if(menuTextureRGB != NULL)		// texture for menu is defined
+		delete menuTextureRGB;
+	if(menuTextureRGBA != NULL)		// texture for menu is defined
+		delete menuTextureRGBA;
 }
 
 MENU_STYLE CMenu::getMenuStyle(void)
@@ -263,6 +355,11 @@ void CGUIState::drawScene(void)
 		scenePtr();								// Call draw funcs
 }
 
+CMenuNode *CGUIState::getMenuListHead(void)
+{
+	return menuListHead;
+}
+
 void CGUIState::addMenu(CMenu *menuToAdd)
 {
 	CMenuNode *tempNode = NULL;
@@ -308,12 +405,14 @@ public:
 CGUIStateNode::CGUIStateNode(void (*sPtr)(void), int ID)
 {
 	GUIState = new CGUIState(sPtr);
+	nextGUIStateNode = NULL;
 	GUIStateNodeID = ID;
 }
 
 CGUIStateNode::CGUIStateNode(CGUIState *GUIStateToAttach, int ID)
 {
 	GUIState = GUIStateToAttach;
+	nextGUIStateNode = NULL;
 	GUIStateNodeID = ID;
 }
 
@@ -340,11 +439,11 @@ class CGUISystem
 {
 private:
 	CGUIStateNode *guiStateNodeHead, *currentGUIStateNode;
-	int currentID, GUI_OrthoWidth, GUI_OrthoHeight;
+	int currentID, screenWidth, screenHeight, menuScaleFactor, menuItemScaleFactor;
 public:
-	CGUISystem(CGUIStateNode *GUIStateHead);		// Accept list of gui states
-	CGUISystem(void);
+	CGUISystem(int screenWidth, int screenHeight, CGUIStateNode *GUIStateHead);		// Accept list of gui states
 	~CGUISystem();
+	void setGUIProperties(int winWidth, int winHeight, int _menuScaleFactor, int _menuItemScaleFactor);
 	void deleteGUIStateNodes(void);
 	//void addGUIStateNode(CGUIStateNode *GUIStateNode);
 	int addGUIState(CGUIState *GUIState);
@@ -352,26 +451,33 @@ public:
 	int getCurrentGUIStateNodeID(void);
 	bool setCurrentGUIState(CGUIStateNode *currGUINode);
 	bool setCurrentGUIState(int ID);
-	void render(void);								// Draws scene and GUI
+	void render(void);																// Draws scene and GUI
 };
 
-CGUISystem::CGUISystem(CGUIStateNode *GUIStateHead)
+CGUISystem::CGUISystem(int _screenWidth = GUI_ORTHO_WIDTH, int _screenHeight = GUI_ORTHO_HEIGHT, CGUIStateNode *GUIStateHead = NULL)// Screen size should be even numbers
 {
 	guiStateNodeHead = GUIStateHead;
-	currentGUIstate = guiStateNodeHead;
+	currentGUIStateNode = guiStateNodeHead;
 	currentID = 0;
-}
 
-CGUISystem::CGUISystem(void)
-{
-	guiStateNodeHead = NULL;
-	currentGUIstate = guiStateNodeHead;
-	currentID = 0;
+	screenWidth = _screenWidth;
+	screenHeight = _screenHeight;
+
+	menuScaleFactor = 1;
+	menuItemScaleFactor = 1;
 }
 
 CGUISystem::~CGUISystem()
 {
-	deleteGUIStateNodes(void);
+	deleteGUIStateNodes();
+}
+
+void CGUISystem::setGUIProperties(int winWidth, int winHeight, int _menuScaleFactor = 1, int _menuItemScaleFactor = 1)
+{
+	screenWidth = winWidth;
+	screenHeight = winHeight;
+	menuScaleFactor = _menuScaleFactor;
+	menuItemScaleFactor = _menuItemScaleFactor;
 }
 
 void CGUISystem::deleteGUIStateNodes(void)
@@ -388,23 +494,21 @@ void CGUISystem::deleteGUIStateNodes(void)
 
 int CGUISystem::addGUIState(CGUIState *GUIState)
 {
-	CGUIStateNode *tempNode = NULL;
-
-	if(guiStateNodeHead != NULL)
+	if(guiStateNodeHead != NULL)											// Add to head
 	{
-		// Find tail;
-		for(tempNode = guiStateNodeHead; tempNode->nextGUIStateNode != NULL; tempNode = tempNode->nextGUIStateNode);
-		tempNode->nextGUIStateNode = new CGUIStateNode(GUIState, currentID);
+		CGUIStateNode *tempNode = new CGUIStateNode(GUIState, currentID);
+		tempNode->nextGUIStateNode = guiStateNodeHead;
+		guiStateNodeHead = tempNode;
 		currentID++;
 	}
 	else
 	{
 		guiStateNodeHead = new CGUIStateNode(GUIState, currentID);
-		currentGUIStateNode = guiStateNodeHead;		// Set head to currNode
+		currentGUIStateNode = guiStateNodeHead;								// Set head to currNode
 		currentID++;
 	}
 
-	return currentID - 1;		// Provide handle to this GUI state
+	return currentID - 1;													// Provide handle to this GUI state
 }
 
 CGUIStateNode *CGUISystem::getCurrentGUIStateNode(void)
@@ -436,7 +540,7 @@ bool CGUISystem::setCurrentGUIState(int ID)
 	return false;		// Cant find ID
 }
 
-CGUISystem::render(void)
+void CGUISystem::render(void)
 {
 	// BLank slate; pixel colour info, and depth component of pixels
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.
@@ -451,8 +555,190 @@ CGUISystem::render(void)
 		currentGUIStateNode->GUIState->drawScene();
 
 		// Draw GUI
-		enterOrthographic(-100, 100, -100, 100, -100, 100, 0, 0, resizeWINWidth, resizeWINHeight);
+		enterOrthographic(-(screenWidth/2), (screenWidth/2), -(screenHeight/2), (screenHeight/2), -(screenHeight/2), (screenHeight/2), 0, 0, resizeWINWidth, resizeWINHeight);
 
+			// Run through list of menus for this GUI state
+			for(CMenuNode *tempMenuNode = currentGUIStateNode->GUIState->getMenuListHead(); tempMenuNode != NULL; tempMenuNode = tempMenuNode->nextMenuNode)
+			{
+				int spacing = 0;
+				switch(tempMenuNode->menu->getMenuStyle())			// Get type of menu to display
+				{
+					case MENU_STYLE_ROW_CENTER:						// Center screen; Displays items along y-axis
+
+						spacing = GUI_MENU_ROW_CENTER_Y;			// Position the row menu underneath the header menu
+
+						// Check if this menu has a texture defined;
+						if(tempMenuNode->menu->menuTextureRGB != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+							// Check if texture coord array != NULL, draw text
+							//		else use generic rectangle coord
+						}
+						else if(tempMenuNode->menu->menuTextureRGBA != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+						}
+						else// Default menu back drop; row
+						{
+							defaultRowMenuBackdrop(screenWidth, screenHeight);				// Dont need to apply transforms, default is center
+							// Draw menu Heading;
+							glColor3f(0,1,0);										// using glColor3i results in black, always ???
+							render_string(-(screenWidth/4) + GUI_EDGE_PADDING, GUI_MENU_ROW_CENTER_Y - GUI_EDGE_PADDING,0, GLUT_BITMAP_HELVETICA_18, tempMenuNode->menu->menuHeadingText);
+						}
+
+						// Draw Menu items on top of menu back drop;
+						for(CMenuItemNode *tempItem = tempMenuNode->menu->getMenuItemHead(); tempItem != NULL; tempItem = tempItem->nextMenuItem)
+						{
+							spacing -= GUI_MENU_ITEM_PADDING;
+
+							if(tempItem->itemTextureRGB != NULL)		// Item texture defined; draw textured menu item
+							{
+
+							}
+							else if(tempItem->itemTextureRGBA != NULL)	// Item texture defined; draw textured menu item
+							{
+
+							}
+							else										// Item texture not defined; draw default menu item
+							{
+								switch(tempItem->style)
+									{
+									case MENU_ITEM_RECTANGULAR:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing,0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									case MENU_ITEM_CIRCULAR:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing,0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									case MENU_ITEM_OVAL:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing,0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									}
+							}
+						}
+					break;
+					case MENU_STYLE_ROW_LEFT:				// Left hand side; "
+
+						spacing = GUI_MENU_ROW_LEFT_Y;		// Position the row menu underneath the header menu
+
+						// Check if this menu has a texture defined;
+						if(tempMenuNode->menu->menuTextureRGB != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+						}
+						else if(tempMenuNode->menu->menuTextureRGBA != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+						}
+						else// Default menu back drop; row
+						{
+							glPushMatrix();
+								glTranslatef(GUI_MENU_ROW_LEFT_X, GUI_MENU_ROW_LEFT_Y, 0.0);// move from center
+								defaultRowMenuBackdrop();
+							glPopMatrix();
+
+							// Draw menu Heading;
+							glColor3f(0,1,0);										// using glColor3i results in black, always ???
+							render_string(GUI_MENU_ROW_LEFT_X + GUI_EDGE_PADDING, GUI_MENU_ROW_LEFT_X - GUI_EDGE_PADDING,0, GLUT_BITMAP_HELVETICA_18, tempMenuNode->menu->menuHeadingText);
+						}
+
+						// Draw Menu items on top of menu back drop;
+						for(CMenuItemNode *tempItem = tempMenuNode->menu->getMenuItemHead(); tempItem != NULL; tempItem = tempItem->nextMenuItem)
+						{
+							spacing -= GUI_MENU_ITEM_PADDING;
+
+							if(tempItem->itemTextureRGB != NULL)		// Item texture defined; draw textured menu item
+							{
+
+							}
+							else if(tempItem->itemTextureRGBA != NULL)	// Item texture defined; draw textured menu item
+							{
+
+							}
+							else										// Item texture not defined; draw default menu item
+							{
+								switch(tempItem->style)
+									{
+									case MENU_ITEM_RECTANGULAR:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_LEFT_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(GUI_MENU_ROW_LEFT_X + GUI_EDGE_PADDING, spacing,0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									case MENU_ITEM_CIRCULAR:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_LEFT_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(GUI_MENU_ROW_LEFT_X + GUI_EDGE_PADDING, spacing,0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									case MENU_ITEM_OVAL:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_LEFT_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(GUI_MENU_ROW_LEFT_X + GUI_EDGE_PADDING, spacing,0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									}
+							}
+						}
+					break;
+					case MENU_STYLE_ROW_RIGHT:				// Right hand side; "
+					break;
+					case MENU_STYLE_COLUMN_CENTER:			// Center screen; Displays items along x-axis
+					break;
+					case MENU_STYLE_COLUMN_HEADER:			// Header area; "
+					break;
+					case MENU_STYLE_COLUMN_FOOTER:			// Footer area; "
+					break;
+					case MENU_STYLE_SQUARE_CENTER:			// Center screen; Display items in a square orientation
+					break;
+					case MENU_STYLE_SQUARE_MOUSE:			// Try and orient this menus pos relative to mouse pos; context menu
+					break;
+				}
+			}
 		enterPerspective(0, 0, resizeWINWidth, resizeWINHeight, VIEW_DISTANCE);
 	}
 	else
@@ -463,79 +749,8 @@ CGUISystem::render(void)
 
 	// Done drawing; put onto screen;
 //	glFlush();                               		/*Ensures all commands processed; single buffer  */
-	glutSwapBuffers();								// this is required in double buffer mode, or else see nothing; require addition of GLUT_DOUBLE in glutInitDisplayMode at init
-	glutPostRedisplay();							// fix flickering? nop
-}
-
-// handles gui drawing/input handling
-class CGUI
-{
-private:
-	//CColourCodedSelection GUIselection;
-
-	GUI_State currentGUI;
-	void (*HUD_ESCMenuFuncPtr)(void);
-	void (*HUD_RUNTIMEDIALOGUE)(void);
-	void (*HUD_RUNTIME)(void);
-public:
-	CGUI(void);
-	void setESCMenu(void (*ESCMENUFUNC)(void));
-	void setRUNTIMEMenu(void (*RUNTIMEMENUFUNC)(void));
-	void setDIALOGUEMenu(void (*DIALOGUEMENUFUNC)(void));
-
-	void creatESCMenu();
-	void setGUI(GUI_State guistate);		// Upon user input, call this, set appropriate gui to draw
-	void drawGUI(void);						// draw the gui, and handle any selection
-};
-
-CGUI::CGUI(void)
-{
-	currentGUI = STATE_ESC_MENU;
-
-	HUD_ESCMenuFuncPtr = NULL;
-	HUD_RUNTIMEDIALOGUE = NULL;
-	HUD_RUNTIME = NULL;
-}
-
-void CGUI::setESCMenu(void (*ESCMENUFUNC)(void))
-{
-	//HUD_ESCMenuFuncPtr = ESCMENUFUNC;
-}
-
-void CGUI::setRUNTIMEMenu(void (*RUNTIMEMENUFUNC)(void))
-{
-	HUD_RUNTIMEDIALOGUE = RUNTIMEMENUFUNC;
-}
-
-void CGUI::setDIALOGUEMenu(void (*DIALOGUEMENUFUNC)(void))
-{
-	HUD_RUNTIME = DIALOGUEMENUFUNC;
-}
-
-void CGUI::setGUI(GUI_State guistate)
-{
-	currentGUI = guistate;
-}
-
-void CGUI::drawGUI(void)
-{
-	switch(currentGUI)
-	{
-	case STATE_ESC_MENU:
-		// NEW GAME, QUIT
-		if(HUD_ESCMenuFuncPtr != NULL)
-			(*HUD_ESCMenuFuncPtr)();
-		break;
-	case STATE_RUNTIME:
-		// THIS IS A HUD, DISLPAY WHERE YOU AT IN THE MAP
-		if(HUD_RUNTIMEDIALOGUE != NULL)
-			(*HUD_RUNTIMEDIALOGUE)();
-		break;
-	case DIALOG_OUT:
-		if(HUD_RUNTIME != NULL)
-			(*HUD_RUNTIME)();
-		break;
-	}
+	glutSwapBuffers();								// this is required in double buffer mode, or else see nothing; require addition of GLUT_DOUBLE in glutInitDisplayMode at init; also results in the back buffer becoming undefined
+	glutPostRedisplay();							// Tells glut to call display func next cycle..?; fix flickering? nop
 }
 
 class CFixedGUI					// Activated by keypress, selection via mouse
@@ -543,13 +758,13 @@ class CFixedGUI					// Activated by keypress, selection via mouse
 private:
 	CMenu *escMenu, *headerMenu, *footerMenu, *leftMenu, *rightMenu, *squareMenu;
 	//CMenuNode *escMenuHead, *runtimeMenuHead, *optionMenuHead;			// hold a list of menues to display under a certain GUI state
-	GUI_State currentGUI;
+	//GUI_State currentGUI;
 	int GUI_OrthoWidth, GUI_OrthoHeight;
 public:
 	CFixedGUI(void);
 	~CFixedGUI();
-	void setGUI(GUI_State setGUI);
-	GUI_State getGUIstate(void);
+	//void setGUI(GUI_State setGUI);
+	//GUI_State getGUIstate(void);
 	void attachEscMenu(CMenu *escMenu);
 	void attachHeaderMenu(CMenu *headerMenu);
 	void attachFooterMenu(CMenu *footerMenu);
@@ -586,7 +801,7 @@ CFixedGUI::CFixedGUI(void)
 	rightMenu = NULL;
 	squareMenu = NULL;
 
-	currentGUI = STATE_ESC_MENU;
+	//currentGUI = STATE_ESC_MENU;
 }
 
 CFixedGUI::~CFixedGUI(void)
@@ -619,7 +834,7 @@ CFixedGUI::~CFixedGUI(void)
 	if(squareMenu != NULL)
 		delete squareMenu;
 }
-
+/*
 void CFixedGUI::setGUI(GUI_State setGUI)
 {
 	currentGUI = setGUI;
@@ -629,7 +844,7 @@ GUI_State CFixedGUI::getGUIstate(void)
 {
 	return currentGUI;
 }
-
+*/
 void CFixedGUI::attachEscMenu(CMenu *attachMenu)
 {
 	if(escMenu != NULL)
@@ -680,6 +895,7 @@ void CFixedGUI::attachSquareMenu(CMenu *attachMenu)
 
 void CFixedGUI::drawGUI(void)			// Return the current GUI state so app knows what is appropriate to draw afterwards
 {
+	/*
 	int spacing = 0;
 	switch(currentGUI)
 	{
@@ -763,23 +979,7 @@ void CFixedGUI::drawGUI(void)			// Return the current GUI state so app knows wha
 		enterPerspective(0, 0, resizeWINWidth, resizeWINHeight, VIEW_DISTANCE);
 		break;
 	}
-}
-
-void CFixedGUI::setStateEscMenu(void)
-{
-	currentGUI = STATE_ESC_MENU;
-
-}
-
-void CFixedGUI::setStateRuntime(void)
-{
-	currentGUI = STATE_RUNTIME;
-
-}
-
-void CFixedGUI::processGUIselection(void)
-{
-
+*/
 }
 
 class CHUD						// Selection via mouse

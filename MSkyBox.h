@@ -1,5 +1,9 @@
 // Render a skybox:
 
+#include <fstream>
+#include <ENDIAN.h>
+#include <TGA Loader.h>
+
 #define gameLevelSky "E:\\Users\\CoM\\Documents\\Programming Work\\Eclipse Workspace\\Mohammed FunProj\\Debug\\Game Files\\Sky Config.txt"
 
 // Will load after everything..

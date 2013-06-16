@@ -11,6 +11,7 @@
 
 //*********TYPEDEFS*********
 typedef float RGB[3];
+typedef float RGBA[4];
 
 typedef float Mat3x[3][3];
 typedef float Mat2x[2][2];

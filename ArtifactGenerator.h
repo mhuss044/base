@@ -4,8 +4,11 @@
  *  Created on: Nov 11, 2012
  *      Author: EvorateAwMaDemCriAnR
  *
- *      test tes
+ *      Generate objects in field
  */
+
+#include <vector>
+#include <CommonTypes.h>
 
 #ifndef ARTIFACTGENERATOR_H_
 #define ARTIFACTGENERATOR_H_
@@ -244,111 +247,24 @@ CArtifactSys::~CArtifactSys()
 	}
 }
 
-
-
-
-
-class CSelectableBox
+//
+//	Take players position, forward vector, right vector and produce a field of artifacts
+//	Dynamically add/delete artifacts based on changes in player pos
+//
+class CProceduralArtifacts
 {
+private:
+	int numArtifacts;
+	std::vector<Vert3xf> positionList;		// List of verticies
 public:
-	Vert3xf pos, colour;
-
-	CSelectableBox(void);
-	~CSelectableBox();
-	void render(void);
-	void tickleColour(void);
-	void move(void);
+	CProceduralArtifacts(int numArts, float &rX, float &rY, float &rZ);
+	~CProceduralArtifacts();
+	void setNumArtifacts(int numArti);
 };
 
-CSelectableBox::CSelectableBox()
+CProceduralArtifacts::CProceduralArtifacts(int numArts, float &rX, float &rY, float &rZ)
 {
-	pos.x = rand()%1000;
-	pos.z = rand()%1000;
-
-	// Set colour to green;
-	colour.x = 0;
-	colour.y = 1;
-	colour.z = 0;
+	numArtifacts = numArts;
 }
 
-CSelectableBox::~CSelectableBox()
-{
-
-}
-
-void CSelectableBox::render(void)
-{
-	glPushMatrix();
-		glTranslatef(pos.x, 0, pos.z);
-		DrawCubeNoBottom();
-	glPopMatrix();
-}
-
-void CSelectableBox::tickleColour(void)// change colour var randomly
-{
-	if(rand()%2)
-		rand()%2 ? colour.x += 0.1 : colour.x -= 0.1;
-	if(rand()%2)
-		rand()%2 ? colour.y += 0.1 : colour.y -= 0.1;
-	if(rand()%2)
-		rand()%2 ? colour.z += 0.1 : colour.z -= 0.1;
-}
-
-void CSelectableBox::move(void)// translate randomly
-{
-	static int dir = rand()%4;
-
-	if(rand()%2)
-	{
-		if(rand()%2)
-			rand()%2 ? pos.x += 0.1 : pos.x -= 0.1;
-		if(rand()%2)
-			rand()%2 ? pos.y += 0.1 : pos.y -= 0.1;
-		if(rand()%2)
-			rand()%2 ? pos.z += 0.1 : pos.z -= 0.1;
-	}
-	else
-	{
-		switch(dir)
-		{
-		case 0:
-			if(rand()%2)
-				pos.x += 0.001*pos.x;
-			else
-				pos.z += 0.001*pos.z;
-			break;
-		case 1:
-			if(rand()%2)
-				pos.x -= 0.001*pos.x;
-			else
-				pos.z -= 0.001*pos.z;
-			break;
-		case 2:
-			if(rand()%2)
-				pos.x += 0.001*pos.x;
-			else
-				pos.z -= 0.001*pos.z;
-			break;
-		case 3:
-			if(rand()%2)
-				pos.x -= 0.001*pos.x;
-			else
-				pos.z += 0.001*pos.z;
-			break;
-		}
-	}
-
-	if(pos.x > 1000 || pos.x < 0)
-	{
-		pos.x = rand()%1000;
-		dir = rand()%5;
-	}
-	if(pos.z > 1000 || pos.z < 0)
-	{
-		pos.z = rand()%1000;
-		dir = rand()%5;
-	}
-}
-
-CSelectableBox boxArray[10000];
 #endif /* ARTIFACTGENERATOR_H_ */

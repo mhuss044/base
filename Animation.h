@@ -5,6 +5,7 @@
  *      Author: EvorateAwMaDemCriAnR
  *
  *      class to calc new pos of obj after certain time in sec
+ *		use gluttimerfunc
  */
 
 #ifndef ANIMATION_H_

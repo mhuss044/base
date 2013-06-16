@@ -3,6 +3,9 @@
 // endian.h
 // Converts little and big endian formats
 
+#ifndef ENDIAN_CONV_H_
+#define ENDIAN_CONV_H_
+
 #define LITTLE 0
 #define BIG 1
 
@@ -282,5 +285,5 @@ double CEndian::byteArrayToDouble(unsigned char *arr, unsigned int bytes, int ty
 }
 
 
-
+#endif	/*ENDIAN_CONV_H_*/
 

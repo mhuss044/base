@@ -57,6 +57,7 @@ enum lookOperations													// Directions to rotate camera view
 // FIXED PITCH CAMERA
 // Camera class; allows
 //		free yaw, restricted pitch, manipulation of camPos
+//		Must use ::Look when request rotation operation to be under restricitons, YAW/Roll/Pitch arent restricted
 // FIXED PITCH CAMERA
 class CFixedPitchCamera
 {
@@ -380,6 +381,7 @@ void CArbAxisCamera::Look(lookOperations operation)
 		break;
 		case CAMERA_LOOK_DOWN:
 			ArbAxisRotation(-rotationSpeed, camRightVec, &camForwardVec, &camUpVec);	// Rotate fwd/Up about camRightVec
+			break;
 		case CAMERA_LOOK_RIGHT:
 			ArbAxisRotation(-rotationSpeed, camUpVec, &camForwardVec, &camRightVec);		// Rotate fwd/right about camUpVec
 		break;

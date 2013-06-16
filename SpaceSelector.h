@@ -126,9 +126,6 @@ void wireCone(void)
 }
 
 
-
-
-
 enum SELECT_MOVE_DIR
 {
 	SELECTION_FORWARD = 0,
@@ -361,7 +358,7 @@ void CColourCodedSelection::detectSelection2D(int mouseX, int mouseY, int OrthoW
 	// Draw Selectables; drawing to back buffer; user doesnt see any of this
 	// MUST BE IDENTICAL DRAWING SETUP AS IN MAIN LOOP; camera, transforms,
 	// must be perfect transforms as where they normally are:
-	enterOrthographic(-(OrthoWidth/2), (OrthoWidth/2), -(OrthoHeight/2), (OrthoHeight/2), 0, 0, 0, 0, resizeWINWidth, resizeWINHeight)
+	enterOrthographic(-(OrthoWidth/2), (OrthoWidth/2), -(OrthoHeight/2), (OrthoHeight/2), 0, 0, 0, 0, resizeWINWidth, resizeWINHeight);
 
 	// BLank slate; clear pixel colour info, and depth component of pixels
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.
@@ -441,16 +438,16 @@ void CSelection::moveSelection(SELECT_MOVE_DIR moveDir)
 {
 	switch(moveDir)
 	{
-	case FORWARD:
+	case SELECTION_FORWARD:
 		selectionPos.x += 10;
 		break;
-	case BACKWARD:
+	case SELECTION_BACKWARD:
 		selectionPos.x -= 10;
 		break;
-	case LEFT:
+	case SELECTION_LEFT:
 		selectionPos.z += 10;
 		break;
-	case RIGHT:
+	case SELECTION_RIGHT:
 		selectionPos.z -= 10;
 		break;
 	}
