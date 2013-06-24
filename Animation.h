@@ -6,10 +6,14 @@
  *
  *      class to calc new pos of obj after certain time in sec
  *		use gluttimerfunc
+ *
+ *		store frames as vertList, 1frame per 1/5 sec? interpolate b/w em
  */
 
 #ifndef ANIMATION_H_
 #define ANIMATION_H_
+
+#include <CommonTypes.h>
 
 class CBone
 {
@@ -34,20 +38,22 @@ public:
 	void addBone(CBoneNode *boneToAdd);
 };
 
-class CAnimInfo
+class CAnimation
 {
 public:
-	Vert3xf *posToAnimate;
+	vertexList *frameList;
+	drawableObj *animatedObj;
 
-	CAnimInfo(void);
-	~CAnimInfo();
+	CAnimation(void);
+	~CAnimation();
 
 	void animationCalculations();		// per frame
 };
 
-CAnimInfo::CAnimInfo(void)
+CAnimation::CAnimation(void)
 {
-	posToAnimate = NULL;
+	frameList = NULL;
+	animatedObj = NULL;
 }
 
 #endif /* ANIMATION_H_ */

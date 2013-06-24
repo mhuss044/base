@@ -58,6 +58,7 @@ enum lookOperations													// Directions to rotate camera view
 // Camera class; allows
 //		free yaw, restricted pitch, manipulation of camPos
 //		Must use ::Look when request rotation operation to be under restricitons, YAW/Roll/Pitch arent restricted
+//		May want to disable proccessCamera(): rotate cam view via mouse. bcs messes up the restricted look axis
 // FIXED PITCH CAMERA
 class CFixedPitchCamera
 {
@@ -168,9 +169,9 @@ void CFixedPitchCamera::Look(lookOperations operation)
 		}
 	}
 	else if(operation == CAMERA_LOOK_RIGHT)
-		Yaw(rotationSpeed);
-	else if(operation == CAMERA_LOOK_LEFT)
 		Yaw(-rotationSpeed);
+	else if(operation == CAMERA_LOOK_LEFT)
+		Yaw(rotationSpeed);
 }
 
 void CFixedPitchCamera::scalePos(float k)

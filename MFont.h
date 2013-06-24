@@ -25,7 +25,10 @@
 #ifndef MFONT_H_
 #define MFONT_H_
 
-#include <gl/freeglut.h>		// Needed bcs use glutBitmapCharacter, glutBitmapString
+#define FONT_HEIGHT_IN_PIXELS 20									// Height in pixels of the font
+
+#include <gl/freeglut.h>											// Needed bcs use glutBitmapCharacter, glutBitmapString
+#include <fstream>													// Needed for extractString
 
 void render_string(float x, float y, float z, void* font, const char* string)//Got from lighthouse3d.com
 {
@@ -82,7 +85,7 @@ void Fps(void)
 	}
 }
 
-void DrawStrings(int windowWidth, int windowHeight, int viewDist)// Changes to ortho, writes fps, back to perspective, place in game loop
+void DrawStrings(int windowWidth, int windowHeight, int viewDist)	// Changes to ortho, writes fps, back to perspective, place in game loop
 {
 	glDisable(GL_TEXTURE_2D);                                 // Must disable textures during text setup;
                                                               // Without, colours will be obscured.
@@ -109,7 +112,14 @@ void DrawStrings(int windowWidth, int windowHeight, int viewDist)// Changes to o
 	glEnable(GL_TEXTURE_2D);                                  // Re-enable textures.
 }
 
+const char *extractString(int key, const char* filename)					// Gets string from a file of ints and their respective strings
+{
+	//fstream stringFile(filename);
+	//get int, check,
+	//	true; get string
 
+	return filename;
+}
 
 
 #endif /* MFONT_H_ */

@@ -5,6 +5,7 @@
  *      Author: EvorateAwMaDemCriAnR
  *
  *      Generate objects in field
+ *      adds objs to world drawer
  */
 
 #include <vector>

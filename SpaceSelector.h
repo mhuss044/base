@@ -4,10 +4,6 @@
  *  Created on: Nov 9, 2012
  *      Author: EvorateAwMaDemCriAnR
  *
- *      Where to place new cube
- *      Allow move selection cube
- *
- *
  *
  *      k heres what can be done
  *      	colour code objs and when mouse click, read in x,y mouse colour = gets obj identity
@@ -72,11 +68,27 @@
  * 		draw operations slow? if inc copy/write rectangle; costs more
  * 		will be able to select selectables that are normally behind non selectable items; this is bcs dont completely redraw entire scene, depth test pass
  *
+ *
+ *
+ *		success;
+ *			give primitive draw func to CCCSelection, detects mouse selection
+ *		future;
+ *			menu select
+ *			works with 3d world pick on the fly
+ *			incoporate VBO ptr efficcient draw
+ *			Dont need to store colour vals; instead know how many selectables in list, and gen colour as draw the fly, increment by set amt so when det know which obj
+ *				->this results in greater compute time; realistically, wont ever hit limit of colours available
  */
 
 
 #ifndef SPACESELECTOR_H_
 #define SPACESELECTOR_H_
+
+#include <map>						// Needed to store colourXcallback data
+#include <CommonTypes.h>			// Needed for RGB
+#include <gl/gl.h>					// Needed for gl funcs; glColor3f, glReadPixels, etc
+
+using namespace std;				// bcs utilize std::map
 
 void square500(void)
 {
@@ -125,7 +137,6 @@ void wireCone(void)
     glPopMatrix();
 }
 
-
 enum SELECT_MOVE_DIR
 {
 	SELECTION_FORWARD = 0,
@@ -133,6 +144,192 @@ enum SELECT_MOVE_DIR
 	SELECTION_LEFT,
 	SELECTION_RIGHT
 };
+
+class selectableData
+{
+public:
+	Vert3xf colourCode;
+	void (*callBack)(void);
+
+	selectableData(float *x, float *y, float *z, void (*callBackToSet)(void));
+	~selectableData();
+	void setCallBack(void (*callBackToSet)(void));
+};
+
+selectableData::selectableData(float *x, float *y, float *z, void (*callBackToSet)(void))
+{
+	callBack = callBackToSet;
+
+	// Get a new colour code
+	*x < 1.0 ? *x += 0.1 : (*y < 1.0 ? *y += 0.1 : (*z < 1.0 ? *z += 0.1 : 1));
+
+	colourCode.x = *x;
+	colourCode.y = *y;
+	colourCode.z = *z;
+}
+
+selectableData::~selectableData()
+{
+}
+
+void selectableData::setCallBack(void (*callBackToSet)(void))
+{
+	callBack = callBackToSet;
+}
+
+typedef struct _selectableMapData
+{
+	void (*drawFunc)(void), (*callBack)(void);
+	_selectableMapData(void)
+	{
+		drawFunc = NULL;
+		callBack = NULL;
+	}
+}selectableMapData;
+
+void getPixelFromGLBuffer(float *pixel, int mousePosX, int mousePosY, int windowWidth, int windowHeight, int bufferToRead)// Read frame buffer at mouseX/Y
+{
+	// Read frame buffer
+	float frameBuffVal[1][1][3];
+	// Specify source buffer to read from;
+	glReadBuffer(bufferToRead);
+	// Read pixel data
+	glReadPixels(mousePosX, (windowHeight-mousePosY), 1, 1, GL_RGB, GL_FLOAT, frameBuffVal);		// lower left of buffer, size, format, type, array
+
+	pixel[0] = highest01(frameBuffVal[0][0][0]);
+	pixel[1] = highest01(frameBuffVal[0][0][1]);
+	pixel[2] = highest01(frameBuffVal[0][0][2]);
+}
+
+// UNTESTED UNTESTEDUNTESTED UNTESTEDUNTESTED UNTESTEDUNTESTED UNTESTEDUNTESTED UNTESTED
+// WAaaaaaay less code
+// thing is, map<keyType, valueType> myMap;
+//		then myMap[myKey] = myValue;
+// 			whats happenning; keyType key = myKey; so cant pass classes, or structs here, only addresses of em
+// the question becomes, when map is deleted, does it delete the key*?
+//		TEST^^^^^^^^^^^^; MADE A DESTRUCTOR TO CHECK IF !=NULL; DELETE
+class CColourCodedSelection_map									// Colour Coded Selection using <map>
+{
+private:
+	map<Vert3xf*, selectableMapData> selectablesMap;					// Make a map with key; RGB, value; selectableMapData
+public:
+	Vert3xf lastColour;
+	int componentToIncrement;									// either 0, 1, 2 corresponding to x, y, z in lastColour
+
+	CColourCodedSelection_map(void);
+	~CColourCodedSelection_map();
+
+	void deleteSelectableID(void *(drawFunc)(void));			// Find this drawFunc, and delete selection for it
+	void drawColourCodedSelectables(void);
+	void addToSelectablesList(void (*drawFunc)(void), void (*callBack)(void));
+	void evaluateNextColour(void);
+	void detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight);		// Upon mouse click; detect which selected, call callback
+};
+
+CColourCodedSelection_map::CColourCodedSelection_map(void)
+{
+	lastColour.x = 0.0;
+	lastColour.y = 0.0;
+	lastColour.z = 0.0;
+
+	componentToIncrement = 0;
+}
+
+CColourCodedSelection_map::~CColourCodedSelection_map(void)
+{
+	// Run through selectables, draw
+	for(map<Vert3xf*, selectableMapData>::iterator iter = selectablesMap.begin(); iter != selectablesMap.end(); ++iter)
+	{
+		if(iter->first != NULL)
+			delete iter->first;
+	}
+}
+
+void CColourCodedSelection_map::drawColourCodedSelectables(void)
+{
+	// Run through selectables, draw
+	for(map<Vert3xf*, selectableMapData>::iterator iter = selectablesMap.begin(); iter != selectablesMap.end(); ++iter)
+	{
+		glColor3f(iter->first->x, iter->first->y, iter->first->z);								// Specify colour
+		iter->second.drawFunc();															// draw selectable
+	}
+}
+
+void CColourCodedSelection_map::evaluateNextColour(void)											// change lastColour to next available colour
+{
+	if(componentToIncrement > 2)
+		componentToIncrement = 0;
+	switch(componentToIncrement)
+	{
+	case 0:
+		lastColour.x += 0.1;
+		break;
+	case 1:
+		lastColour.y += 0.1;
+		break;
+	case 2:
+		lastColour.z += 0.1;
+		break;
+	}
+	componentToIncrement++;
+}
+
+void CColourCodedSelection_map::addToSelectablesList(void (*drawFunc)(void), void (*callBack)(void))// Add node to list
+{
+	Vert3xf *selectableColour = new Vert3xf;
+	selectableMapData data;
+
+	data.callBack = callBack;
+	data.drawFunc = drawFunc;
+
+	evaluateNextColour();																			// Get next colour
+	selectableColour->x = lastColour.x;
+	selectableColour->y = lastColour.y;
+	selectableColour->z = lastColour.z;
+
+	selectablesMap[selectableColour] = data;														// Insert selectable
+}
+
+void CColourCodedSelection_map::detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight)
+{
+	// Draw Selectables; drawing to back buffer; user doesnt see any of this
+	// MUST BE IDENTICAL DRAWING SETUP AS IN MAIN LOOP; camera, transforms,
+	// must be perfect transforms as where they normally are:
+	enterOrthographic(-(OrthoWidth/2), (OrthoWidth/2), -(OrthoHeight/2), (OrthoHeight/2), 0, 0, 0, 0, resizeWINWidth, resizeWINHeight);
+
+	// BLank slate; clear pixel colour info, and depth component of pixels
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.
+																		//Also specifies what to clear.(COLOR BUFFER)
+																		// Have to clear buffer bit bcs dont want previous drawn items to be atop the following drawn items?
+	// Draw selectables
+	drawColourCodedSelectables();
+
+	// Read frame buffer
+	float pixelData[1][1][3];
+	// Specify source buffer to read from;
+	glReadBuffer(GL_BACK);
+	// Read pixel data
+	glReadPixels(mouseX, (WINHeight-mouseY), 1, 1, GL_RGB, GL_FLOAT, pixelData);		// lower left of buffer, size, format, type, array
+	cout << INS << highest01(pixelData[0][0][0]) << ", " << highest01(pixelData[0][0][1]) << ", " << highest01(pixelData[0][0][2]);
+
+	// Clear back buffer as to allow real scene to be drawn without the previous obstructing it
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// detect selected;
+	Vert3xf *pixelColour = new Vert3xf;
+	pixelColour->x = highest01(pixelData[0][0][0]);
+	pixelColour->y = highest01(pixelData[0][0][1]);
+	pixelColour->z = highest01(pixelData[0][0][2]);
+
+	// Get selected;
+	for(map<Vert3xf*, selectableMapData>::iterator iter = selectablesMap.begin(); iter != selectablesMap.end(); ++iter)
+	{
+		if(iter->first->x == pixelColour->x)
+			if(iter->first->y == pixelColour->y)
+				if(iter->first->z == pixelColour->z)
+					iter->second.callBack();
+	}
+}
 
 class CSelectableNode
 {
@@ -187,8 +384,8 @@ public:
 	void drawColourCodedSelectables(void);
 	bool addToSelectablesList(void (*drawFunc)(void), const char *name);
 	void evaluateNextColour(void);
-	void detectSelection3D(int mouseX, int mouseY, Vert3xf *camPos, Vert3xf *viewPt);		// Upon mouse click
-	void detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight);
+	void detectSelection3D(int mouseX, int mouseY, Vert3xf *camPos, Vert3xf *viewPt);		// Upon mouse click; detect which selected, call callback
+	void detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight, int windowWidth, int windowHeight);// Upon mouse click; detect which selected, call callback
 };
 
 CColourCodedSelection::CColourCodedSelection(void)
@@ -353,12 +550,12 @@ void CColourCodedSelection::detectSelection3D(int mouseX, int mouseY, Vert3xf *c
 	}
 }
 
-void CColourCodedSelection::detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight)
+void CColourCodedSelection::detectSelection2D(int mouseX, int mouseY, int OrthoWidth, int OrthoHeight, int windowWidth, int windowHeight)
 {
 	// Draw Selectables; drawing to back buffer; user doesnt see any of this
 	// MUST BE IDENTICAL DRAWING SETUP AS IN MAIN LOOP; camera, transforms,
 	// must be perfect transforms as where they normally are:
-	enterOrthographic(-(OrthoWidth/2), (OrthoWidth/2), -(OrthoHeight/2), (OrthoHeight/2), 0, 0, 0, 0, resizeWINWidth, resizeWINHeight);
+	enterOrthographic(-(OrthoWidth/2), (OrthoWidth/2), -(OrthoHeight/2), (OrthoHeight/2), 0, 0, 0, 0, windowWidth, windowHeight);
 
 	// BLank slate; clear pixel colour info, and depth component of pixels
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);					//Clear window to previously defined colour ^^^.

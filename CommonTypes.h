@@ -83,6 +83,35 @@ typedef struct _Face4x				   //Type to hold faces.
 	char cnfg;						   //cnfg: either P: polygon, or T: triangle. (its the face type)
 }Face4x;
 
+typedef struct _vertexList				// Holds a list of verticies, texture coordinates, and colour values
+{
+	float *vertexList, *textureCoordList, *colourValueList;
+
+	_vertexList(void)
+	{
+		vertexList = NULL;
+		textureCoordList = NULL;
+		colourValueList = NULL;
+	}
+}vertexList;
+
+typedef struct _drawableObj
+{
+	vertexList vertList;
+	int *triFaceVerts, *quadFaceVerts, *textureCoordVerts, *colourValVerts;		// Index values to verticies in list
+	int glTexID;
+
+	_drawableObj(void)
+	{
+		triFaceVerts = NULL;
+		quadFaceVerts = NULL;
+		textureCoordVerts = NULL;
+		colourValVerts = NULL;
+
+		glTexID = -1;
+	}
+}drawableObj;
+
 typedef struct _Bounds
 {
 	float minX, maxX, minY, maxY, minZ, maxZ;
