@@ -18,13 +18,18 @@ enum EKeyState
 
 class CKeyboard
 {
-public:
+private:
 	EKeyState normalKey[256], specialKey[256];
-
+	bool normalAlreadyDown[256], specialAlreadyDown[256];			// Seems this is necessary, GLUT key repeat ignore funcs cant get em to work..
+public:
 	CKeyboard(void);
 	void resetKeys(void);
 	void updateNormalKey(int keyNum, EKeyState status);
 	void updateSpecialKey(int keyNum, EKeyState status);
+	void normalSetKeyAlreadyDown(int keyNum);
+	void specialSetKeyAlreadyDown(int keyNum);
+	bool normalKeyAlreadyDown(int keyNum);
+	bool specialKeyAlreadyDown(int keyNum);
 	EKeyState queryNormalKey(int keyNum);
 	EKeyState querySpecialKey(int keyNum);
 };
@@ -35,10 +40,13 @@ CKeyboard::CKeyboard(void)
 	{
 		normalKey[x] = Key_UP;
 		specialKey[x] = Key_UP;
+
+		specialAlreadyDown[x] = false;	// Key is not down
+		normalAlreadyDown[x] = false;	// Key is not down
 	}
 }
 
-void CKeyboard::resetKeys(void)			// GLUT api provides a keyUP callback func to update each key, not needed
+void CKeyboard::resetKeys(void)								// GLUT api provides a keyUP callback func to update each key, not needed
 {
 	for(int x = 0; x < 256; x++)		// init keys
 	{
@@ -50,11 +58,35 @@ void CKeyboard::resetKeys(void)			// GLUT api provides a keyUP callback func to 
 void CKeyboard::updateNormalKey(int keyNum, EKeyState status)
 {
 	normalKey[keyNum] = status;
+	if(status == Key_UP)									// Set to not down
+		normalAlreadyDown[keyNum] = false;
 }
 
 void CKeyboard::updateSpecialKey(int keyNum, EKeyState status)
 {
 	specialKey[keyNum] = status;
+	if(status == Key_UP)
+		specialAlreadyDown[keyNum] = false;
+}
+
+void CKeyboard::normalSetKeyAlreadyDown(int keyNum)			// Set down state
+{
+	normalAlreadyDown[keyNum] = true;
+}
+
+void CKeyboard::specialSetKeyAlreadyDown(int keyNum)
+{
+	specialAlreadyDown[keyNum] = true;
+}
+
+bool CKeyboard::normalKeyAlreadyDown(int keyNum)
+{
+	return normalAlreadyDown[keyNum];
+}
+
+bool CKeyboard::specialKeyAlreadyDown(int keyNum)
+{
+	return specialAlreadyDown[keyNum];
 }
 
 EKeyState CKeyboard::queryNormalKey(int keyNum)

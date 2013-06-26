@@ -147,13 +147,15 @@ enum SELECT_MOVE_DIR
 
 class selectableData
 {
-public:
+private:
 	Vert3xf colourCode;
 	void (*callBack)(void);
-
+public:
 	selectableData(float *x, float *y, float *z, void (*callBackToSet)(void));
 	~selectableData();
 	void setCallBack(void (*callBackToSet)(void));
+	void (*getCallBack(void))(void);
+	Vert3xf *getColourCode(void);
 };
 
 selectableData::selectableData(float *x, float *y, float *z, void (*callBackToSet)(void))
@@ -175,6 +177,16 @@ selectableData::~selectableData()
 void selectableData::setCallBack(void (*callBackToSet)(void))
 {
 	callBack = callBackToSet;
+}
+
+void (*selectableData::getCallBack(void))(void)
+{
+	return callBack;
+}
+
+Vert3xf *selectableData::getColourCode(void)
+{
+	return &colourCode;
 }
 
 typedef struct _selectableMapData

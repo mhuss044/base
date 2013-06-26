@@ -75,12 +75,30 @@ float highest01(float num)		// highest 0.1, so 0.29 -> 0.3
 {
 	float x10 = num*10.0;		// need 10.0 here or else float*int = int
 								// same with below, even tho float typecast; int()/int = int, but dont need cast when return int()/float = float
+/*
+	// Gives 0.7000000
+	x = float(int(x10)/10.0)+0.1;
 
+	// Gives 0.6999999
+	x = (int(x10)/10.0)+0.1;
+
+	// Gives 0.6999999
+	x = double(int(x10)/10.0)+0.1;
+
+	// Gives 0.6000000
+	x = double(int(x10)/10.0);
+
+	// Gives 0.6000000
+	x = float(int(x10)/10.0);
+
+	// Gives 0.7
+	x += 0.1;
+*/
 	//x10 - int(x10); // 2 - 2, mayb have to typecast to flaot
 	if((x10 - int(x10)) >= 0.5)
-		return (int(x10)/10.0)+0.1;	// 0.2 + 0.1
+		return float(int(x10)/10.0)+0.1;	// 0.2 + 0.1
 	else
-		return (int(x10)/10.0);
+		return float(int(x10)/10.0);
 }
 
 float Distance2f(float x1, float y1, float x2, float y2)
