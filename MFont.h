@@ -20,6 +20,10 @@
 			The glutBitmapWidth function returns the width in pixels of a single bitmapped character in the specified font.
 
 			GLUT stroke fonts to render stroke characters
+
+			Language file;
+				hash sentence/word that is used in a menu or dialogue
+					make a hash table; hash = string; quick lookup
  */
 
 #ifndef MFONT_H_
