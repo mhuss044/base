@@ -24,6 +24,8 @@
 			Language file;
 				hash sentence/word that is used in a menu or dialogue
 					make a hash table; hash = string; quick lookup
+
+			Rename MFont to StringUtilities?
  */
 
 #ifndef MFONT_H_

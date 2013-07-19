@@ -54,6 +54,10 @@
  *			pass transform values to CMenu to customize default width/height of menu
  *			pass transform values to CMenuItem to customize width/height of menuItems
  *			give CMenu a callback, do selection on Menus; when click menu, callback
+ *			get menu items ability to change GUIstates; click 'Options Menu', change state to option menu
+ *			give option to have menu backdrop drawn only wide/long enough to fit all menu items in without waste of space
+ *
+ *			incorporate GUI_MENU_ROW_HEIGHT_FACTOR into menuBackDropFunc, render
  *
  *			custom vert menus;
  *				pass VBO, texCoordArr to CMenu; get custom shape menu
@@ -85,7 +89,7 @@
 #define GUI_MENU_ROW_WIDTH_FACTOR 0.1															// 0.16 = 1/6, 0.2 = 1/5 of screen width taken by row menu
 #define GUI_MENU_ROW_HEIGHT_FACTOR 0.75
 #define GUI_MENU_COLUMN_WIDTH_FACTOR 0.75
-#define GUI_MENU_COLUMN_HEIGHT_FACTOR 0.1			 											// 0.1 = Column menu height is 1/10 of max height
+#define GUI_MENU_COLUMN_HEIGHT_FACTOR 0.15			 											// 0.1 = Column menu height is 1/10 of max height
 
 #define GUI_MENU_ROW_CENTER_X -(GUI_ORTHO_WIDTH/4)												// Orthogonal plane coordinates, not window coords
 #define GUI_MENU_ROW_CENTER_Y (GUI_ORTHO_HEIGHT/4)
@@ -165,14 +169,14 @@ void defaultRowRightMenuBackdrop(int screenWidth, int screenHeight)
 	DrawRectanlge((screenWidth/2) - (screenWidth*GUI_MENU_ROW_WIDTH_FACTOR) - GUI_EDGE_PADDING + GUI_MENU_INSET_LENGTH, (screenWidth/2) - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING, -(screenHeight/2) + GUI_EDGE_PADDING + GUI_MENU_INSET_LENGTH, ((screenHeight/2) - GUI_EDGE_PADDING) - GUI_MENU_INSET_LENGTH);
 }
 
-void defaultColumnMenuBackdrop(int screenWidth, int screenHeight)
+void defaultColumnCenterMenuBackdrop(int screenWidth, int screenHeight)
 {
 	glColor3f(1.0,1.0,1.0);
 	glColor3f(1, 0.0, 0.0);									// using glColor3i results in black, always ???
-	DrawRectanlge(-((screenWidth/2) + GUI_EDGE_PADDING), ((screenWidth/2) - GUI_EDGE_PADDING), (screenHeight/2) - 20, (screenHeight/2) - GUI_EDGE_PADDING);
+	DrawRectanlge(((-screenWidth/2) + GUI_EDGE_PADDING*2 + (screenWidth*GUI_MENU_ROW_WIDTH_FACTOR)), ((screenWidth/2) - GUI_EDGE_PADDING*2 - (screenWidth*GUI_MENU_ROW_WIDTH_FACTOR)), (screenHeight/2) - (screenHeight/2)*GUI_MENU_COLUMN_HEIGHT_FACTOR,(screenHeight/2) - GUI_EDGE_PADDING);
 	glColor3f(1.0,1.0,1.0);
 	glColor3f(0, 0.0, 0.0);									// using glColor3i results in black, always ???
-	DrawRectanlge(-((screenWidth/2)-10) + GUI_MENU_INSET_LENGTH , ((screenWidth/2)-10) - GUI_MENU_INSET_LENGTH , ((screenHeight/2) - 30) + GUI_MENU_INSET_LENGTH , ((screenHeight/2) - 10) - GUI_MENU_INSET_LENGTH );
+	DrawRectanlge(((-screenWidth/2) + GUI_EDGE_PADDING*2 + (screenWidth*GUI_MENU_ROW_WIDTH_FACTOR)) + GUI_MENU_INSET_LENGTH, ((screenWidth/2) - GUI_EDGE_PADDING*2 - (screenWidth*GUI_MENU_ROW_WIDTH_FACTOR)) - GUI_MENU_INSET_LENGTH, (screenHeight/2) - (screenHeight/2)*GUI_MENU_COLUMN_HEIGHT_FACTOR + GUI_MENU_INSET_LENGTH, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH );
 }
 
 void defaultSquareMenuBackdrop(void)
@@ -458,8 +462,13 @@ int CGUIStateNode::getGUIStateNodeID(void)
 //		Have global, application specific handles to GUI screens(GUI states), define the keypress that setsGUIState(state); app specific
 //			This allows applications the responsibility of tracking their GUI states
 //			Easy cleanup; since handles are global, CGUISystem add em to its list of GUIs, onClose = delete list of GUIStates = delete asociated menus+menuItems
-//		Danger; if define a gui state, pass it to GUIsys to display, but dont addGUIState first; get hanging handle, wont be deleted
+//		Danger;
+//			if define a gui state, pass it to GUIsys to display, but dont addGUIState first; get hanging handle, wont be deleted
 //			Put in setCurrentGUIState a check to see if in list?
+//
+//		Remember;
+//			Place call to setGUIProperties(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT)); when resize/fullscreen
+//
 class CGUISystem
 {
 private:
@@ -871,12 +880,88 @@ void CGUISystem::render(void)
 					case MENU_STYLE_COLUMN_CENTER:			// Center screen; Displays items along x-axis
 					break;
 					case MENU_STYLE_COLUMN_HEADER:			// Header area; "
+
+						// For column menus, spacing increments along the x axis
+						spacing = ((-screenWidth/2) + GUI_EDGE_PADDING + (screenWidth*GUI_MENU_ROW_WIDTH_FACTOR)) + GUI_EDGE_PADDING + GUI_MENU_INSET_LENGTH + GUI_EDGE_PADDING;// Position the column menu's left x to be beside the left row menu
+
+						// Check if this menu has a texture defined;
+						if(tempMenuNode->menu->menuTextureRGB != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+							// Check if texture coord array != NULL, draw text
+							//		else use generic rectangle coord
+						}
+						else if(tempMenuNode->menu->menuTextureRGBA != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+						}
+						else// Default menu back drop; row
+						{
+							defaultColumnCenterMenuBackdrop(screenWidth, screenHeight);				// Dont need to apply transforms, default is center
+							// Draw menu Heading;
+							glColor3f(0.0,1.0,0.0);													// using glColor3i results in black, always ???
+							render_string(spacing, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - FONT_HEIGHT_IN_PIXELS, 0, GLUT_BITMAP_HELVETICA_18, tempMenuNode->menu->menuHeadingText);
+
+							// Add the pixels used to draw the heading text, acquiring xleft of button beside menu heading text
+							spacing += getStringLength(GLUT_BITMAP_HELVETICA_18, (unsigned char*)tempMenuNode->menu->menuHeadingText) + GUI_EDGE_PADDING;
+						}
+
+						// Draw Menu items on top of menu back drop;
+						for(CMenuItemNode *tempItem = tempMenuNode->menu->getMenuItemHead(); tempItem != NULL; tempItem = tempItem->nextMenuItem)
+						{
+							if(tempItem->itemTextureRGB != NULL)		// Item texture defined; draw textured menu item
+							{
+
+							}
+							else if(tempItem->itemTextureRGBA != NULL)	// Item texture defined; draw textured menu item
+							{
+
+							}
+							else										// Item texture not defined; draw default menu item
+							{
+								switch(tempItem->style)
+									{
+									case MENU_ITEM_RECTANGULAR:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.3, 0.3, 0.3);									// using glColor3i results in black, always ???
+										DrawRectanlge(spacing, spacing + getStringLength(GLUT_BITMAP_HELVETICA_12, (unsigned char*)tempItem->menuItemText) + GUI_EDGE_PADDING*2, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING - FONT_HEIGHT_IN_PIXELS, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING);
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(spacing + GUI_EDGE_PADDING, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - FONT_HEIGHT_IN_PIXELS, 0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									case MENU_ITEM_CIRCULAR:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.3, 0.3, 0.3);									// using glColor3i results in black, always ???
+										DrawRectanlge(spacing, spacing + getStringLength(GLUT_BITMAP_HELVETICA_12, (unsigned char*)tempItem->menuItemText) + GUI_EDGE_PADDING*2, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING - FONT_HEIGHT_IN_PIXELS, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING);
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(spacing + GUI_EDGE_PADDING, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - FONT_HEIGHT_IN_PIXELS, 0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									case MENU_ITEM_OVAL:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.3, 0.3, 0.3);									// using glColor3i results in black, always ???
+										DrawRectanlge(spacing, spacing + getStringLength(GLUT_BITMAP_HELVETICA_12, (unsigned char*)tempItem->menuItemText) + GUI_EDGE_PADDING*2, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING - FONT_HEIGHT_IN_PIXELS, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING);
+
+										// Draw menu item text;
+										glColor3f(0,1,0);										// using glColor3i results in black, always ???
+										render_string(spacing + GUI_EDGE_PADDING, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - FONT_HEIGHT_IN_PIXELS, 0, GLUT_BITMAP_HELVETICA_12, tempItem->menuItemText);
+										break;
+									}
+							}
+
+							// Make room for next item;
+							spacing += getStringLength(GLUT_BITMAP_HELVETICA_12, (unsigned char*)tempMenuNode->menu->menuHeadingText) + GUI_EDGE_PADDING + GUI_MENU_ITEM_PADDING;
+						}
 					break;
 					case MENU_STYLE_COLUMN_FOOTER:			// Footer area; "
 					break;
 					case MENU_STYLE_SQUARE_CENTER:			// Center screen; Display items in a square orientation
 					break;
 					case MENU_STYLE_SQUARE_MOUSE:			// Try and orient this menus pos relative to mouse pos; context menu
+					break;
+					case MENU_STYLE_CUSTOM:
 					break;
 				}
 			}
@@ -1140,6 +1225,81 @@ void CGUISystem::processMenuMouseSelection(int mousePosX, int mousePosY)
 					case MENU_STYLE_COLUMN_CENTER:			// Center screen; Displays items along x-axis
 					break;
 					case MENU_STYLE_COLUMN_HEADER:			// Header area; "
+
+						// For column menus, spacing increments along the x axis
+						spacing = ((-screenWidth/2) + GUI_EDGE_PADDING + (screenWidth*GUI_MENU_ROW_WIDTH_FACTOR)) + GUI_EDGE_PADDING + GUI_MENU_INSET_LENGTH + GUI_EDGE_PADDING;// Position the column menu's left x to be beside the left row menu
+
+						// Add the pixels used to draw the heading text, acquiring xleft of button beside menu heading text
+						spacing += getStringLength(GLUT_BITMAP_HELVETICA_18, (unsigned char*)tempMenuNode->menu->menuHeadingText) + GUI_EDGE_PADDING;
+
+						// Check if this menu has a texture defined;
+						if(tempMenuNode->menu->menuTextureRGB != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+							// Check if texture coord array != NULL, draw text
+							//		else use generic rectangle coord
+						}
+						else if(tempMenuNode->menu->menuTextureRGBA != NULL)
+						{
+							// Draw texture onto rectangle menu space;
+						}
+						else// Default menu back drop; row
+						{
+							defaultColumnCenterMenuBackdrop(screenWidth, screenHeight);				// Dont need to apply transforms, default is center
+						}
+
+						// Draw Menu items on top of menu back drop;
+						for(CMenuItemNode *tempItem = tempMenuNode->menu->getMenuItemHead(); tempItem != NULL; tempItem = tempItem->nextMenuItem)
+						{
+							// Get colour code;
+							menuItemColourCode = iter->getColourCode();
+
+							if(tempItem->itemTextureRGB != NULL)		// Item texture defined; draw textured menu item
+							{
+
+							}
+							else if(tempItem->itemTextureRGBA != NULL)	// Item texture defined; draw textured menu item
+							{
+
+							}
+							else										// Item texture not defined; draw default menu item
+							{
+								switch(tempItem->style)
+									{
+									case MENU_ITEM_RECTANGULAR:
+										glColor3f(menuItemColourCode->x, menuItemColourCode->y, menuItemColourCode->z);
+										DrawRectanlge(spacing, spacing + getStringLength(GLUT_BITMAP_HELVETICA_12, (unsigned char*)tempItem->menuItemText) + GUI_EDGE_PADDING*2, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING - FONT_HEIGHT_IN_PIXELS, (screenHeight/2) - GUI_EDGE_PADDING - GUI_MENU_INSET_LENGTH - GUI_EDGE_PADDING);
+										break;
+									case MENU_ITEM_CIRCULAR:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+										break;
+									case MENU_ITEM_OVAL:
+										glColor3f(1.0,1.0,1.0);
+										glColor3f(0.0, 0.0, 1.0);									// using glColor3i results in black, always ???
+										glPushMatrix();
+											glTranslatef(GUI_MENU_ROW_CENTER_X + GUI_EDGE_PADDING, spacing, 0.0);// Move rectangle down w.r.t last rect
+											DrawRectanlge(0, 50, 80, 90);
+										glPopMatrix();
+										break;
+									}
+							}
+
+							// Make room for next item;
+							spacing += getStringLength(GLUT_BITMAP_HELVETICA_12, (unsigned char*)tempMenuNode->menu->menuHeadingText) + GUI_EDGE_PADDING + GUI_MENU_ITEM_PADDING;
+
+							// Next Menu item;
+							iter++;
+						}
+						// Process Selection:
+						getPixelFromGLBuffer(pixel, mousePosX, mousePosY, screenWidth, screenHeight, GL_BACK);
+
+						// Check colour codes, callback:
+						callBackFromPixel(pixel, tempMenuNode);
 					break;
 					case MENU_STYLE_COLUMN_FOOTER:			// Footer area; "
 					break;
@@ -1147,7 +1307,9 @@ void CGUISystem::processMenuMouseSelection(int mousePosX, int mousePosY)
 					break;
 					case MENU_STYLE_SQUARE_MOUSE:			// Try and orient this menus pos relative to mouse pos; context menu
 					break;
-				}
+					case MENU_STYLE_CUSTOM:					//
+					break;
+					}
 			}
 	}
 	else
