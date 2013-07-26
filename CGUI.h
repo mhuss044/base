@@ -44,6 +44,7 @@
  *			menu pos/size dynamic to screen size
  *
  *		Future;
+ *			Responds to key checks all menu items for the key reqested; instead State vector of chars, check if the state has that key, yes; go find menu item
  *			finish rest of GUI menu types; column_center, column_header/footer
  *			finish allow set of menu item colours, menu colour
  *			test with std display sizes; 1024x768, 1280x768, 1366x768, 1600x1200,
@@ -59,9 +60,25 @@
  *
  *			incorporate GUI_MENU_ROW_HEIGHT_FACTOR into menuBackDropFunc, render
  *
+ *			"scrollable containers, buttons, text labels, inputs, links"
+ *
  *			custom vert menus;
  *				pass VBO, texCoordArr to CMenu; get custom shape menu
  *				pass ", " to CMenuItem; get custom shape menu item
+ */
+
+// GUI sys intructions;
+/*
+ *  Create a GUIsys, create menu state handles
+ *  Create GUIstates, add them to GUIsys
+ *  Create menus, fill them with menu items; pick their responseKey, their void func callback or state change call back (using GUIstate handles just created)
+ *  Add created menus to appropriate GUIstate
+ *  -> done making the GUI sys
+ *  Input handling;
+ *  Go to inputDistributor; add GUISys.queryResponseKey(int key) member under each utilized key
+ *  Mouse selection; place processMouseSelection(x,y) at each mouse click
+ *  State render Func; place GUIsys.render(); per frame
+ *  Changes to window; place .setGUIproperties where ever change window size; resizing/fullscreen
  */
 
 #ifndef CGUI_H_
@@ -187,27 +204,23 @@ void defaultSquareMenuBackdrop(void)
 class CMenuItemNode
 {
 public:
-	char respondsToKey;
 	const char* menuItemText;
 	MENU_ITEM_STYLE style;
-	void (*callBack)(void);
 	Vert3xf menuItemColour;
 	RGB *itemTextureRGB;					// Array of float[3] holding texture to use for menu item
 	RGBA *itemTextureRGBA;					// Array of float[4] holding texture to use for menu item
 
 	CMenuItemNode *nextMenuItem;
 
-	CMenuItemNode(MENU_ITEM_STYLE itemStyle, const char* itemText, void (*callBackFunc)(void), char keyListen, RGB *rgbPixelArr, RGBA *rgbaPixelArr, float itemColourX, float itemColourY, float itemColourZ);
+	CMenuItemNode(MENU_ITEM_STYLE itemStyle, const char* itemText, RGB *rgbPixelArr, RGBA *rgbaPixelArr, float itemColourX, float itemColourY, float itemColourZ);
 	~CMenuItemNode();
 };
 
-CMenuItemNode::CMenuItemNode(MENU_ITEM_STYLE itemStyle = MENU_ITEM_RECTANGULAR, const char* itemText = NULL, void (*callBackFunc)(void) = NULL, char keyListen = 0, RGB *rgbPixelArr = NULL, RGBA *rgbaPixelArr = NULL, float itemColourX = GUI_MENU_ITEM_DEFAULT_COLOUR_X, float itemColourY = GUI_MENU_ITEM_DEFAULT_COLOUR_Y, float itemColourZ = GUI_MENU_ITEM_DEFAULT_COLOUR_Z)
+CMenuItemNode::CMenuItemNode(MENU_ITEM_STYLE itemStyle = MENU_ITEM_RECTANGULAR, const char* itemText = NULL, RGB *rgbPixelArr = NULL, RGBA *rgbaPixelArr = NULL, float itemColourX = GUI_MENU_ITEM_DEFAULT_COLOUR_X, float itemColourY = GUI_MENU_ITEM_DEFAULT_COLOUR_Y, float itemColourZ = GUI_MENU_ITEM_DEFAULT_COLOUR_Z)
 {
 	nextMenuItem = NULL;
 	menuItemText = itemText;
-	callBack = callBackFunc;
 	style = itemStyle;
-	respondsToKey = keyListen;
 
 	itemTextureRGB = rgbPixelArr;
 	itemTextureRGBA = rgbaPixelArr;
@@ -237,7 +250,7 @@ public:
 	MENU_STYLE getMenuStyle(void);
 	int getNumMenuItems(void);
 	CMenuItemNode *getMenuItemHead(void);
-	void addMenuItem(MENU_ITEM_STYLE style, const char* text, void (*callback)(void));
+	void addMenuItem(MENU_ITEM_STYLE style, const char* text, char responseKey, void (*callback)(void), int stateToSet);
 	void deleteMenuItemsList(void);			// Deletes all menu items in list
 };
 
@@ -277,15 +290,15 @@ CMenuItemNode *CMenu::getMenuItemHead(void)
 	return menuItemsHead;
 }
 
-void CMenu::addMenuItem(MENU_ITEM_STYLE style, const char* text, void (*callback)(void))
+void CMenu::addMenuItem(MENU_ITEM_STYLE style, const char* text, char responseKey, void (*callback)(void), int stateToSet)		// No default vals for callback/stateToSet bcs make sure user implements taking both paths into consideration
 {
 	static float lastColour[3] = {0.0, 0.0, 0.0};
-	selectableData *newSelectable = new selectableData((lastColour + 0), (lastColour + 1), (lastColour + 2), callback);
+	selectableData *newSelectable = new selectableData((lastColour + 0), (lastColour + 1), (lastColour + 2), responseKey, callback, stateToSet);
 
 	// Run through list, delete menu items
 	if(menuItemsHead == NULL)
 	{
-		menuItemsHead = new CMenuItemNode(style, text, callback);
+		menuItemsHead = new CMenuItemNode(style, text);
 		numMenuItems++;
 
 		// Add created selectable to list:
@@ -297,7 +310,7 @@ void CMenu::addMenuItem(MENU_ITEM_STYLE style, const char* text, void (*callback
 		// find last menu item;
 		for(; tempNode->nextMenuItem != NULL; tempNode = tempNode->nextMenuItem);
 		// Add menu item;
-		tempNode->nextMenuItem = new CMenuItemNode(style, text, callback);
+		tempNode->nextMenuItem = new CMenuItemNode(style, text);
 		numMenuItems++;
 
 		// Add created selectable to list:
@@ -485,7 +498,7 @@ public:
 	int getCurrentGUIStateNodeID(void);
 	bool setCurrentGUIState(CGUIStateNode *currGUINode);
 	bool setCurrentGUIState(int ID);
-	bool queryResponseKey(char Key);												// Find menu item with this key, call callback, return false if key not found
+	bool queryResponseKey(int key);												// Find menu item with this key, call callback, return false if key not found
 	void callBackFromPixel(float *pixel, CMenuNode *tempMenuNode);
 	void render(void);																// Draws scene and GUI
 	void processMenuMouseSelection(int mousePosX, int mousePosY);
@@ -576,19 +589,24 @@ bool CGUISystem::setCurrentGUIState(int ID)
 	return false;		// Cant find ID
 }
 
-bool CGUISystem::queryResponseKey(char key)
+bool CGUISystem::queryResponseKey(int key)
 {
-	// Run through all menus of current GUI state:
+	void (*menuItemCallBackPtr)(void) = NULL;
+
+	// Run through all menus of current GUI state: Current GUI state because dont want key selection on hidden states
 	for(CMenuNode *tempMenuNode = currentGUIStateNode->GUIState->getMenuListHead(); tempMenuNode != NULL; tempMenuNode = tempMenuNode->nextMenuNode)
 	{
-		// Run through all menu items for this menu:
-		for(CMenuItemNode *tempItem = tempMenuNode->menu->getMenuItemHead(); tempItem != NULL; tempItem = tempItem->nextMenuItem)
+		// Find the menu item to which responds to this key: run thru menus selectableInfoList, check keys
+		for(list<selectableData>::iterator iter = tempMenuNode->menu->selectionInfoList.begin(); iter != tempMenuNode->menu->selectionInfoList.end(); ++iter)
 		{
-			// Check menu item's key;
-			if(tempItem->respondsToKey == key)
+			// Check key with response key for this menu item;
+			if(iter->getResponseKey() == key)
 			{
-				tempItem->callBack();
-				return true;
+				menuItemCallBackPtr = iter->getCallBack();
+				if(menuItemCallBackPtr != NULL)		// Check if void callback is set
+					menuItemCallBackPtr();			// Make the call
+				else
+					setCurrentGUIState(iter->getStateToSet());		// No void callback, its state change callback
 			}
 		}
 	}
@@ -613,7 +631,10 @@ void CGUISystem::callBackFromPixel(float *pixel, CMenuNode *tempMenuNode)// Chec
 				{
 					cout << INS << "Callback found, calling..";
 					menuItemCallBackPtr = iter->getCallBack();
-					menuItemCallBackPtr();		// Call
+					if(menuItemCallBackPtr != NULL)		// Check if void callback is set
+						menuItemCallBackPtr();			// Make the call
+					else
+						setCurrentGUIState(iter->getStateToSet());		// No void callback, maybe its
 				}
 	}
 }

@@ -86,6 +86,7 @@
 
 #include <map>						// Needed to store colourXcallback data
 #include <CommonTypes.h>			// Needed for RGB
+#include <CGUI.h>
 #include <gl/gl.h>					// Needed for gl funcs; glColor3f, glReadPixels, etc
 
 using namespace std;				// bcs utilize std::map
@@ -145,22 +146,31 @@ enum SELECT_MOVE_DIR
 	SELECTION_RIGHT
 };
 
-class selectableData
+// Cant get ptr to member func to work, so mayb just store state to change to (int), GUIsys makes the change instead
+// use references?? &GUISys::??
+// bool (CGUISystem::*stateSetFunc)(int) = &CGUISystem::setCurrentGUIState(stateToSet); ???????
+class selectableData		// rename this to selectableDataGUISys
 {
 private:
 	Vert3xf colourCode;
 	void (*callBack)(void);
+	int stateToSet;
+	int respondsToKey;
 public:
-	selectableData(float *x, float *y, float *z, void (*callBackToSet)(void));
+	selectableData(float *x, float *y, float *z, int key, void (*callBackToSet)(void), int _stateToSet);
 	~selectableData();
 	void setCallBack(void (*callBackToSet)(void));
 	void (*getCallBack(void))(void);
+	int getStateToSet(void);
+	char getResponseKey(void);
 	Vert3xf *getColourCode(void);
 };
 
-selectableData::selectableData(float *x, float *y, float *z, void (*callBackToSet)(void))
+selectableData::selectableData(float *x, float *y, float *z, int key, void (*callBackToSet)(void), int _stateToSet)		// No default vals, might result in ambiguos callback/key/stateSet vals??
 {
 	callBack = callBackToSet;
+	stateToSet = _stateToSet;
+	respondsToKey = key;
 
 	// Get a new colour code
 	*x < 1.0 ? *x += 0.1 : (*y < 1.0 ? *y += 0.1 : (*z < 1.0 ? *z += 0.1 : 1));
@@ -174,7 +184,7 @@ selectableData::~selectableData()
 {
 }
 
-void selectableData::setCallBack(void (*callBackToSet)(void))
+void selectableData::setCallBack(void (*callBackToSet)(void) = NULL)
 {
 	callBack = callBackToSet;
 }
@@ -182,6 +192,16 @@ void selectableData::setCallBack(void (*callBackToSet)(void))
 void (*selectableData::getCallBack(void))(void)
 {
 	return callBack;
+}
+
+int selectableData::getStateToSet(void)
+{
+	return stateToSet;
+}
+
+char selectableData::getResponseKey(void)
+{
+	return respondsToKey;
 }
 
 Vert3xf *selectableData::getColourCode(void)
@@ -219,7 +239,7 @@ void getPixelFromGLBuffer(float *pixel, int mousePosX, int mousePosY, int window
 //		then myMap[myKey] = myValue;
 // 			whats happenning; keyType key = myKey; so cant pass classes, or structs here, only addresses of em
 // the question becomes, when map is deleted, does it delete the key*?
-//		TEST^^^^^^^^^^^^; MADE A DESTRUCTOR TO CHECK IF !=NULL; DELETE
+//		TEST^^^^^^^^^^^^; MADE A DESTRUCTOR TO CHECK IF !=NULL; DELETE; seems to successfully delete... memory is set to EEEEEEEE... needs further research
 class CColourCodedSelection_map									// Colour Coded Selection using <map>
 {
 private:
@@ -716,6 +736,7 @@ void CSelection::stopPicking(void)
 	glFlush();
 	numHits = glRenderMode(GL_RENDER);	// get number of hits, return to normal rendering mode
 }
+/*
 void CSelection::getHitName(void)
 {
 	if(numHits == 0)
@@ -750,6 +771,8 @@ void CSelection::getHitName(void)
 	// reset numHits
 	numHits = 0;
 }
+*/
+/*
 int CSelection::processMouseSelScene(int mousePosX, int mousePosY)
 {
 	startPicking(mousePosX, mousePosY);
@@ -757,61 +780,7 @@ int CSelection::processMouseSelScene(int mousePosX, int mousePosY)
 	// Push name, draw object, popname.
 	// If the object just drawn intersects the viewing volume, gets hit record
 	// hit rec will then contain this name, plus depth vals
-/*
-	glPushMatrix();
-		glPushName(1);
-			glTranslated(newCube.xp, newCube.yp+5,  newCube.zp);
-			glScalef(20, 20, 20);
-			glColor3f(0.0,0.0,0.0);
-			glutWireSphere(1,10,10);										// 10: slices, 10: stacks
-		glPopName();
-	glPopMatrix();
-    glPushMatrix();
-    	glPushName(2);
-			glTranslatef(500.0f, 0.0f, 500.0f);
-			glScalef(100, 100, 100);
-			glColor3f(0.0,0.0,0.0);
-			glutSolidTorus(0.2,0.8,10,10);
-		glPopName();
-    glPopMatrix();
-    glPushMatrix();
-		glPushName(2);
-			glTranslatef(700.0f, 0.0f, 700.0f);
-			glScalef(100, 100, 100);
-			glColor3f(0.0,0.0,0.0);
-			glutWireCone(1,1,10,10);
-		glPopName();
-    glPopMatrix();
-*/
-	/*
-  	glPushMatrix();
-		glPushName(1);
-			glTranslatef(250.0f, 0.0f, 250.0f);
-			glScalef(10, 10, 10);
-			glColor3f(0.0,0.0,0.0);
-			glColor3f(1.0, 0, 0);
-			DrawCubeNoBottom();
-		glPopName();
-	glPopMatrix();
-    glPushMatrix();
-		glPushName(2);
-			glTranslatef(500.0f, 0.0f, 500.0f);
-			glScalef(10, 10, 10);
-			glColor3f(0.0,0.0,0.0);
-			glColor3f(0,1,0);
-			DrawCubeNoBottom();
-		glPopName();
-	glPopMatrix();
-    glPushMatrix();
-		glPushName(3);
-			glTranslatef(700.0f, 0.0f, 700.0f);
-			glScalef(10, 10, 10);
-			glColor3f(0.0,0.0,0.0);
-			glColor3f(0,0,1);
-			DrawCubeNoBottom();
-		glPopName();
-    glPopMatrix();
-*/
+
 	glPushName(5);
 		glBegin(GL_QUADS);
 			glVertex3i( 0, 0, 0);											// Bottom left
@@ -826,7 +795,8 @@ int CSelection::processMouseSelScene(int mousePosX, int mousePosY)
 
     getHitName();
 }
-
+*/
+/*
 void selection(void)
 {
 	GLuint selecBuf[1024], hitsCnt = 0;
@@ -906,11 +876,11 @@ void selection(void)
 
 
 
-/*
-	glMatrixMode(GL_PROJECTION);	// restore original projection matrix
-	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
-*/
+
+//	glMatrixMode(GL_PROJECTION);	// restore original projection matrix
+//	glPopMatrix();
+//	glMatrixMode(GL_MODELVIEW);
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
@@ -922,7 +892,7 @@ void selection(void)
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 }
-
+*/
 void det( GLdouble *winVerts)
 {
 	GLdouble modelViewMat[16], projectionMat[16];
