@@ -29,7 +29,7 @@ private:
 	char *fragmentShaderSource;
 	GLuint vertexShaderHandle, fragmentShaderHandle, shaderProgramHandle;	// handles to objects
 public:
-	CShaderNode(const char *sourceFileVS, const char *sourceFileFS); // VS; vertex shader, FS; fragment shader
+	CShaderNode(const char *sourceFileVS, const char *sourceFileFS); 		// VS; vertex shader, FS; fragment shader
 	~CShaderNode();
 	bool loadShader(const char *sourceFileVS, const char *sourceFileFS);
 	void useShader(void);
@@ -40,16 +40,14 @@ CShaderNode::CShaderNode(const char* sourceFileVS, const char *sourceFileFS)
 	vertexShaderSource = NULL;
 
 	if(loadShader(sourceFileVS, sourceFileFS))
-		cout << INS << "Shader: " << sourceFile << "\n\tloaded successfully.";
+		cout << INS << "Shader: " << sourceFileVS << "\n\tloaded successfully.";
 	else
-		cout << INS << "Shader: " << sourceFile << "\n\tfailed to load.";
+		cout << INS << "Shader: " << sourceFileFS << "\n\tfailed to load.";
 }
 
-CShaderNode::~CShaderNode(const char* sourceFile)
+CShaderNode::~CShaderNode()
 {
 	// Delete char buffer containing source file for shader
-	if(shaderSource != NULL)
-		delete shaderSource;
 
 	// delete other shader data
 	// Delete shaders;
@@ -131,14 +129,15 @@ class CShader
 private:
 	CShaderNode *shaderNodeHead;
 public:
-	CShader(void);
+	CShader(const char* shaderSrcVS, const char* shaderSrcFS);
 	~CShader();
-	bool addShader(const char *shaderSourceFile);
+	bool loadVertexShader(const char *shaderSourceFile);
+	bool loadFragmentShader(const char *shaderSourceFile);
 };
 
-CShader::CShader(void)
+CShader::CShader(const char* shaderSrcVS = NULL, const char* shaderSrcFS = NULL)
 {
-
+	shaderNodeHead = NULL;
 }
 
 CShader::~CShader(void)
@@ -146,9 +145,17 @@ CShader::~CShader(void)
 	// Delete shader data
 }
 
-bool CShader::addShader(const char *shaderSourceFile);
+bool CShader::loadVertexShader(const char *shaderSourceFile)
 {
-
+	return true;
+	return false;
 }
+
+bool CShader::loadFragmentShader(const char *shaderSourceFile)
+{
+	return true;
+	return false;
+}
+
 
 */

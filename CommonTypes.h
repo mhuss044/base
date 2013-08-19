@@ -13,6 +13,9 @@
 typedef float RGB[3];
 typedef float RGBA[4];
 
+typedef float floatArray3[3];
+typedef float floatArray4[4];
+
 typedef float Mat3x[3][3];
 typedef float Mat2x[2][2];
 typedef float Mat3x4[3][4];                                     // To be compatible with translation matrices

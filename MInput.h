@@ -10,6 +10,30 @@
 #ifndef MINPUT_H_
 #define MINPUT_H_
 
+typedef struct _mouseEvent
+{
+	bool mouseLeftDown, mouseRightDown, mouseMidDown;
+	int windowPosX, windowPosY;
+
+	_mouseEvent(void)
+	{
+		mouseLeftDown = false;
+		mouseRightDown = false;
+		mouseMidDown = false;
+		windowPosX = 0;
+		windowPosY = 0;
+	};
+
+	void reset(void)
+	{
+		mouseLeftDown = false;
+		mouseRightDown = false;
+		mouseMidDown = false;
+		windowPosX = 0;
+		windowPosY = 0;
+	}
+}mouseEvent;
+
 enum EKeyState
 {
 	Key_UP = false,
@@ -98,6 +122,5 @@ EKeyState CKeyboard::querySpecialKey(int keyNum)
 {
 	return specialKey[keyNum];
 }
-
 
 #endif /* MINPUT_H_ */

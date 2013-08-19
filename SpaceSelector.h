@@ -269,7 +269,7 @@ CColourCodedSelection_map::CColourCodedSelection_map(void)
 
 CColourCodedSelection_map::~CColourCodedSelection_map(void)
 {
-	// Run through selectables, draw
+	// Run through selectables
 	for(map<Vert3xf*, selectableMapData>::iterator iter = selectablesMap.begin(); iter != selectablesMap.end(); ++iter)
 	{
 		if(iter->first != NULL)

@@ -6,13 +6,30 @@
  *
  *      Process selection data to det where place new material
  *      Consume material to produce an object consisting of components from material (cubes)
+ *
+ *      prototype; first
+ *  		get row(10) builder
+ *			block(9) of rows is sector
+ *			group of sectors are ship
+ *
+ *		building models
+ *			have a row, want to add another row onto it; click block which you want head of rowToAdd to be beside, then click pos of head to add
+ *				adv; wont need to draw selectable cubes for all row blocks
+ *				how handle sector + sector?
+ *
  */
 
 #ifndef BUILDER_H_
 #define BUILDER_H_
 
-#define SHIP_BLOCK_WIDTH 10
+#include <list>
+#include <CommonTypes.h>
 
+#define SHIP_BLOCK_WIDTH 10
+#define SHIP_SECTOR_WIDTH 3
+#define SHIP_SECTOR_HEIGHT 3
+#define BUILDER_ADD_BLOCK_FRONT 1
+#define BUILDER_ADD_BLOCK_BACK 0
 // func which exports structure class to file
 // func which imports structure class to StructureBuilder class to cont build
 
@@ -102,7 +119,6 @@ void CBuildingBlock::drawBlock(void)
 	}
 }
 
-
 class CStructureBuilder
 {
 	// store selection region
@@ -128,7 +144,7 @@ public:
 	void selectedCallback(CSelectableBlock *selectedBlock);// Process SBlock, ++BBlock, ++new SBlocks
 	void addNewBlock(float x, float y, float z);// ++BBlock to LL, also add new SBlocks considering this new add
 	void addToSelectableLL(CBuildingBlock *hatching, float x, float y, float z);// Add SBlock to LL @x,y,z; add to head
-	void addToSelectableLL(CBuildingBlock *hatching, float hDirX, float hDirY, float hDirz);
+//	void addToSelectableLL(CBuildingBlock *hatching, float hDirX, float hDirY, float hDirz);
 
 	// Render BBlock/SBlock;
 	void renderShip(void);				// 'render' instead of draw; render includes colour ops
@@ -212,7 +228,7 @@ void CShipBuilder::selectedCallback(CSelectableBlock *selectedBlock)
 	// Selected block has been picked. Process its addition into the BBlock LL;
 
 	// New BBlock gets;
-	newBBlock = addNewBlock(selectedBlock->pos.x, selectedBlock->pos.y, selectedBlock->pos.z);
+	//newBBlock = addNewBlock(selectedBlock->pos.x, selectedBlock->pos.y, selectedBlock->pos.z);
 	// Add new selectable blocks;
 	hatchingDir.x = selectedBlock->pos.x - selectedBlock->hatchingBlock->pos.x;
 	hatchingDir.y = selectedBlock->pos.y - selectedBlock->hatchingBlock->pos.y;
@@ -221,11 +237,11 @@ void CShipBuilder::selectedCallback(CSelectableBlock *selectedBlock)
 	// Delete selected SBlock from SBlock LL;
 
 	// New BBlock;
-	CBuildingBlock *tempBBlock = new CBuildingBlock(BLOCK_GENERIC, x,y,z);
+	//CBuildingBlock *tempBBlock = new CBuildingBlock(BLOCK_GENERIC, x,y,z);
 	// Stack atop head;
-	tempBBlock->nextBuildingBlock = shipBlocksHead;
+	//tempBBlock->nextBuildingBlock = shipBlocksHead;
 	// Assign head to top;
-	selectableBlocksHead = tempBBlock;
+	//selectableBlocksHead = tempBBlock;
 }
 
 void CShipBuilder::addNewBlock(float x, float y, float z)
@@ -235,7 +251,7 @@ void CShipBuilder::addNewBlock(float x, float y, float z)
 	// Stack atop head;
 	tempBBlock->nextBuildingBlock = shipBlocksHead;
 	// Assign head to top;
-	selectableBlocksHead = tempBBlock;
+	shipBlocksHead = tempBBlock;
 }
 
 void CShipBuilder::addToSelectableLL(CBuildingBlock *hatching, float x, float y, float z)
@@ -274,6 +290,78 @@ void CShipBuilder::renderSelectableBlocks(void)
 			tempSBlock->drawSelectableBlock();
 		}
 	}
+}
+
+class CBBlock
+{
+private:
+	BLOCK_TYPE blockType;
+	floatArray3 pos;
+public:
+	CBBlock(BLOCK_TYPE type, float x, float y, float z);
+	BLOCK_TYPE getBlockType(void);
+	float *getBlockPos(void);
+};
+
+CBBlock::CBBlock(BLOCK_TYPE type, float x, float y, float z)
+{
+	blockType = type;
+	*pos = x;
+	*(pos+1) = y;
+	*(pos+2) = z;
+}
+
+BLOCK_TYPE CBBlock::getBlockType(void)
+{
+	return blockType;
+}
+
+float *CBBlock::getBlockPos(void)
+{
+	return pos;
+}
+
+class shipRow					// Row; made up of 10 blocks
+{
+private:
+	list<CBBlock> bbList;		// List of blocks making up row
+public:
+	shipRow(BLOCK_TYPE type);	// Specifiy properties of first block
+	~shipRow();
+	bool addBlock(int addDir);	// BUILDER_ADD_BLOCK_FRONT/BACK
+};
+
+shipRow::shipRow(BLOCK_TYPE type)
+{
+	CBBlock newBlock(BLOCK_GENERIC, 0, 0, 0);
+	bbList.push_back(newBlock);
+}
+
+bool shipRow::addBlock(int addDir)
+{
+	if(bbList.size() >= 10)
+		return false;
+
+	switch(addDir)			// Add to front of back
+	{
+	case 0:
+		{
+			list<CBBlock>::iterator iterFront = bbList.begin();
+			float *position = (++iterFront)->getBlockPos();								// ++ bcs gives pos of element out of list
+			CBBlock newBlock(BLOCK_GENERIC, *position+10, *(position+1), *(position+2));
+			bbList.push_front(newBlock);
+			break;
+		}
+	case 1:
+		{
+			list<CBBlock>::iterator iterBack = bbList.end();
+			float *position = (--iterBack)->getBlockPos();
+			CBBlock newBlock(BLOCK_GENERIC, *position-10, *(position+1), *(position+2));
+			bbList.push_back(newBlock);
+			break;
+		}
+	}
+	return true;
 }
 
 #endif /* BUILDER_H_ */
