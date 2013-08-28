@@ -11,6 +11,7 @@
 #ifndef UTILITY_H_
 #define UTILITY_H_
 
+#include <fstream>
 #include <CommonTypes.h>		// Require types for below funcs;
 
 //  UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS UTILITY FUNCS:
@@ -227,6 +228,18 @@ void ZeroVard(int &var, int condition)	                        //'Vard': variabl
 {																//This is made for rotation variables,
 	if(var >= condition)										//so they dont get too big..
 		var = 0;
+}
+
+unsigned long getFileLength(fstream &file)				// Get length of char array
+{
+	if(!file.good())
+		return -1;
+
+	file.seekg(0,ios::end);						// Move to end of file
+	unsigned long len = file.tellg();				// Get pos in file
+	file.seekg(ios::beg);							// Return to beg of file
+
+	return len;
 }
 
 /*************** MATRICIES ******************

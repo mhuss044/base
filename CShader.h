@@ -20,8 +20,18 @@
 	provided rather than with OpenGL's defined fixed functionality pipeline.
 
 
+	open directory /Shaders/
+		load all shaders
+			shader name should be; ID_description
+				101_buildmenuVS
+				102_outsideVS
+				103_outsideFS
+			then can set shader ID to load/use to what scene
  */
-/*
+
+#include <fstream>			// File IO
+#include <Utility.h>
+
 class CShaderNode
 {
 private:
@@ -110,14 +120,14 @@ bool CShaderNode::loadShader(const char *sourceFileVS, const char *sourceFileFS)
 	glLinkProgram(shaderProgramHandle);
 
 	// Get link status;
-	glGetProgramiv(shaderProgramHandle, GL_LINK_STATUS, &linkSuccess);
+//	glGetProgramiv(shaderProgramHandle, GL_LINK_STATUS, &linkSuccess);
 
 	// Check if program linked successfully;
-	if(linkSuccess == GL_FALSE)
-	{
+	//if(linkSuccess == GL_FALSE)
+	//{
 		cout << INS << "Failed to link shader.";
 		return false;
-	}
+//	}
 
 	cout << INS << "Shader: " << sourceFileVS << ", loaded successfully.";
 	cout << INS << "Shader: " << sourceFileFS << ", loaded successfully.";
@@ -157,5 +167,3 @@ bool CShader::loadFragmentShader(const char *shaderSourceFile)
 	return false;
 }
 
-
-*/

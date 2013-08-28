@@ -8,6 +8,8 @@
  * each scene has its own inputrouter, renderer
  * leave one scene, must close it, then open new scene
  *
+ * mayb change to structure which handles & holds what to draw,
+ *
  *      eliminate this... too abstract..
  */
 
